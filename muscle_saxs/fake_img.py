@@ -10,6 +10,7 @@ import os, sys
 import warnings
 import numpy as np
 from PIL import Image
+import cv2
 
 def blank(size):
     """Given a (row, col) size, create a blank numpy array"""
@@ -43,7 +44,7 @@ def background(size, center, a, b, c, d, e):
         img - the generated background image
     """
     dist = lambda x,y: np.hypot((center[0]-x), (center[1]-y))
-    exp = lambda x,y,j,k: np.exp( (dist(x,y)-j) / k)
+    exp = lambda x,y,j,k: j * np.exp(-dist(x,y)*k)
     back = lambda x,y: a + exp(x,y,b,c) + exp(x,y,d,e)
     img = evaluate_to_img(back, size)
     return img
@@ -67,4 +68,28 @@ def pearson(size, center, H, K, M):
     pear = lambda x,y: H * np.power(1 + (sq(K) * sq(dist(x,y))) / M, -M)
     img = evaluate_to_img(pear, size)
     return img
+
+def masking(size, center, radius):
+    """Create a circular masking image, with 0s in the masked region.. 
+    The intended use is as `img*masking(img.shape, center, radius)`
+    Takes:
+        size - (row, col) size of the masked image
+        center - the (row, col) center of the masked region
+        radius - the diameter of the masked region in pixels
+    Gives:
+        img - the image after masking
+    """
+    # NOTE: this is not an anti-aliased circle, despite telling opencv to do
+    # it that way, this should later be fixed to be such using Wu's method.
+    centercv = (center[1], center[0]) # cv2 likes col, row
+    mask = np.ones(size)
+    cv2.circle(mask, centercv, radius, 0, -1, cv2.cv.CV_AA)
+    # img to work on
+               #np.transpose(center), # center in cv2 is col,row
+               #radius,               # masking radius
+               #0,                    # value to draw in circle
+               #-1,                   # negative value indicates infill
+               #cv2.cv.CV_AA)         # says to anti-alias, but doesn't
+    return mask
+
 
