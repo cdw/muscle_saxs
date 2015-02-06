@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-xray_background.py - remove background from small angle x-ray scattering imgs
+fake_img.py - pass parameters and generate a fake x-ray diffraction 
+              image from them 
 
-Created by Dave Williams on 2014-10-09
+Created by Dave Williams on 2015-01-21
 """
 
 import os, sys
@@ -33,7 +34,7 @@ def evaluate_to_img(func, size):
 def background(size, center, a, b, c, d, e):
     """Return a background resulting from a double exponential function.
     This is defined as:
-    back = a + exp((dist-b)/c) + exp((dist-d)/e)
+    back = a + b*exp(-dist*c) + d*exp(-dist*e)
     Where the distance is from the passed center.
     Takes:
         size - (row, col) size of the background image to generate
@@ -81,7 +82,8 @@ def masking(size, center, radius):
     """
     # NOTE: this is not an anti-aliased circle, despite telling opencv to do
     # it that way, this should later be fixed to be such using Wu's method.
-    centercv = (center[1], center[0]) # cv2 likes col, row
+    radius = int(radius)
+    centercv = (int(center[1]), int(center[0])) # cv2 likes col, row
     mask = np.ones(size)
     cv2.circle(mask, centercv, radius, 0, -1, cv2.cv.CV_AA)
     # img to work on
@@ -92,4 +94,55 @@ def masking(size, center, radius):
                #cv2.cv.CV_AA)         # says to anti-alias, but doesn't
     return mask
 
+def fake_img(size, mask_center, mask_rad, 
+             diff_center, back_a, back_b, back_c, back_d, back_e, 
+             d10_spacing, d10_angle, d10_height, d10_spread, d10_decay,
+             d20_spacing, d20_height, d20_spread, d20_decay):
+    """Generate a fake image, for comparison with a real one.
+    """
+    # Background first
+    img = background(size, diff_center, 
+                     back_a, back_b, back_c, back_d, back_e)
+    # Now the d_10 peaks
+    row_delta = lambda ang, space: np.sin(np.radians(ang)) * 0.5 * space
+    col_delta = lambda ang, space: np.cos(np.radians(ang)) * 0.5 * space
+    d10_row_delta = row_delta(d10_angle, d10_spacing)
+    d10_col_delta = col_delta(d10_angle, d10_spacing)
+    d10_center_r = (diff_center[0] + d10_row_delta, 
+                    diff_center[1] + d10_col_delta)
+    d10_center_l = (diff_center[0] - d10_row_delta, 
+                    diff_center[1] - d10_col_delta)
+    d10_r = pearson(size, d10_center_r, d10_height, d10_spread, d10_decay)
+    d10_l = pearson(size, d10_center_l, d10_height, d10_spread, d10_decay)
+    # Now the d_20 peaks
+    d20_row_delta = row_delta(d10_angle, d20_spacing)
+    d20_col_delta = col_delta(d10_angle, d20_spacing)
+    d20_center_r = (diff_center[0] + d20_row_delta, 
+                    diff_center[1] + d20_col_delta)
+    d20_center_l = (diff_center[0] - d20_row_delta, 
+                    diff_center[1] - d20_col_delta)
+    d20_r = pearson(size, d20_center_r, d20_height, d20_spread, d20_decay)
+    d20_l = pearson(size, d20_center_l, d20_height, d20_spread, d20_decay)
+    # Now combine and mask
+    img = img + d10_r + d10_l + d20_r + d20_l
+    img *= masking(size, mask_center, mask_rad)
+    return img
+
+def img_diff(real_img, *args):
+    return np.sum(np.abs(np.subtract(real_img, fake_img(*args))))
+
+def no_tuples_img_diff((mask_center_row, mask_center_col, mask_rad,
+                       diff_center_row, diff_center_col, back_a, back_b,
+                       back_c, back_d, back_e, d10_spacing, d10_angle,
+                       d10_height, d10_spread, d10_decay, d20_spacing,
+                       d20_height, d20_spread, d20_decay), size_row,
+                       size_col, real_img):
+    return img_diff(real_img, 
+                    (size_row, size_col), 
+                    (mask_center_row, mask_center_col), mask_rad,
+                    (diff_center_row, diff_center_col), 
+                    back_a, back_b, back_c, back_d, back_e,
+                    d10_spacing, d10_angle, d10_height, 
+                    d10_spread, d10_decay, 
+                    d20_spacing, d20_height, d20_spread, d20_decay)
 
