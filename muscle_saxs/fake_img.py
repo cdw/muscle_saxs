@@ -10,9 +10,11 @@ Created by Dave Williams on 2015-01-21
 import os, sys
 import warnings
 import numpy as np
+from scipy.misc import factorial
 from PIL import Image
 import cv2
 
+## Support/utility functions
 def blank(size):
     """Given a (row, col) size, create a blank numpy array"""
     return np.zeros(size)
@@ -30,7 +32,7 @@ def evaluate_to_img(func, size):
     eval = func(x_ind[:, None], y_ind[None, :])
     return eval
 
-
+## Image part generation
 def background(size, center, a, b, c, d, e):
     """Return a background resulting from a double exponential function.
     This is defined as:
@@ -94,6 +96,7 @@ def masking(size, center, radius):
                #cv2.cv.CV_AA)         # says to anti-alias, but doesn't
     return mask
 
+## Whole image generation and residuals
 def fake_img(size, mask_center, mask_rad, 
              diff_center, back_a, back_b, back_c, back_d, back_e, 
              d10_spacing, d10_angle, d10_height, d10_spread, d10_decay,
@@ -145,4 +148,29 @@ def no_tuples_img_diff((mask_center_row, mask_center_col, mask_rad,
                     d10_spacing, d10_angle, d10_height, 
                     d10_spread, d10_decay, 
                     d20_spacing, d20_height, d20_spread, d20_decay)
+
+## Probabilistic image matching
+def pixel_difference_log_prob(model, data):
+    """The probability of a data value given an underlying model.
+    Note: Assumes pixel data counting is a Poisson process.
+    Takes:
+        model: the idealized model we assume underlies a phenomenon
+        data: the recorded pixel data value
+    Returns:
+        prob: log of the probability of the difference being observed
+    """
+    # Poisson process in form
+    # P(R|L) = e**-L * (L**R / R!)
+    # Where we are looking for the likelihood of the data given the model
+    # Taking log thereof:
+    # Log(P(R|L)) = Log(e**-L * (L**R / R!))
+    # Log(P(R|L)) = -L + R*Log(L) - Log(R!)
+    if type(data)==int or data.dtype==int:
+        data = data.astype(int)
+    d, m = data, model
+    log_rf = d*np.log(d) - d + np.log(d*(1+4*d*(1+2*d)))/6 + np.log(np.pi)/2
+    prob = -m + d*np.log(m) - log_rf
+    return prob
+
+
 
