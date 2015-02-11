@@ -170,6 +170,10 @@ def pixel_difference_log_prob(model, data):
     d, m = data, model
     log_rf = d*np.log(d) - d + np.log(d*(1+4*d*(1+2*d)))/6 + np.log(np.pi)/2
     prob = -m + d*np.log(m) - log_rf
+    # Take cases where data==0, assign prob to be zero
+    prob[np.nonzero(np.isnan(prob))] = 0
+    # Return the negative log likelihood
+    prob = -1 * prob
     return prob
 
 
