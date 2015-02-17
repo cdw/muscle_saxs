@@ -153,28 +153,52 @@ def no_tuples_img_diff((mask_center_row, mask_center_col, mask_rad,
 def pixel_difference_log_prob(model, data):
     """The probability of a data value given an underlying model.
     Note: Assumes pixel data counting is a Poisson process.
+    
+    Poisson process in form
+        P(R|L) = e**-L * (L**R / R!)
+    Where we are looking for the likelihood of the data given the model
+    Taking log thereof:
+        Log(P(R|L)) = Log(e**-L * (L**R / R!))
+        Log(P(R|L)) = -L + R*Log(L) - Log(R!)
+    
     Takes:
         model: the idealized model we assume underlies a phenomenon
         data: the recorded pixel data value
     Returns:
         prob: log of the probability of the difference being observed
     """
-    # Poisson process in form
-    # P(R|L) = e**-L * (L**R / R!)
-    # Where we are looking for the likelihood of the data given the model
-    # Taking log thereof:
-    # Log(P(R|L)) = Log(e**-L * (L**R / R!))
-    # Log(P(R|L)) = -L + R*Log(L) - Log(R!)
-    if type(data)==int or data.dtype==int:
+    ## make sure we're dealing with floats/ints
+    if not type(data)==int and not data.dtype==int:
         data = data.astype(int)
+    if type(model)==int or model.dtype==int:
+        model = model.astype(float)
     d, m = data, model
+    # Take the cases where model=0 and set to model=1e-100 as 
+    # Poisson processes are constrained to have L>0
+    m[np.nonzero(m==0)] = 1e-100
+    # Find the probabilities of the pixel values
     log_rf = d*np.log(d) - d + np.log(d*(1+4*d*(1+2*d)))/6 + np.log(np.pi)/2
+    log_rf[np.nonzero(data==0)] = np.log(np.math.factorial(0)) #approx breaks
     prob = -m + d*np.log(m) - log_rf
-    # Take cases where data==0, assign prob to be zero
-    prob[np.nonzero(np.isnan(prob))] = 0
     # Return the negative log likelihood
-    prob = -1 * prob
+    prob = -prob
     return prob
 
+def lnprob(p, size_row, size_col, real_img):
+    (mask_center_row, mask_center_col, mask_rad,
+     diff_center_row, diff_center_col, 
+     back_a, back_b, back_c, back_d, back_e, 
+     d10_spacing, d10_angle, d10_height, d10_spread, d10_decay, 
+     d20_spacing, d20_height, d20_spread, d20_decay) = p
+    model = fake_img((size_row, size_col), 
+        (mask_center_row, mask_center_col), mask_rad, 
+        (diff_center_row, diff_center_col), 
+        back_a, back_b, back_c, back_d, back_e, 
+        d10_spacing, d10_angle, d10_height, d10_spread, d10_decay,
+        d20_spacing, d20_height, d20_spread, d20_decay) 
+    data = real_img
+    #prob = np.sum(pixel_difference_log_prob(model, data))
+    prob = np.sum(pixel_difference_log_prob(model, data))
+    return prob, model
 
 
