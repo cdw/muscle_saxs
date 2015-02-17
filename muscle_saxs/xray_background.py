@@ -10,6 +10,7 @@ import os, sys
 import warnings
 import numpy as np
 from PIL import Image
+import cv2
 
 ## Configuration options
 SAMPLEFILE = 'sampleimg1.tif'
@@ -21,7 +22,9 @@ def _image_as_numpy(filename):
     return np.array(Image.open(filename), dtype=np.float) 
 
 def _define_circle_points(center, radius):
-    """Create a list of pixel locations to look at on a circle."""
+    """Create a list of pixel locations to look at on a circle.
+    Note that this isn't aliased etc.
+    """
     res = np.pi/radius # set resolution to avoid double counting a pixel
     x = center[0] + np.round(radius * np.cos(np.arange(-np.pi, np.pi, res)))
     y = center[1] + np.round(radius * np.sin(np.arange(-np.pi, np.pi, res)))
@@ -62,6 +65,13 @@ def _find_blocked_region(img, plot=False):
     hier = hier[0]
     blocked_region = _lowest_contour_in_hierarchy(cont, hier)
     ((x, y), radius) = cv2.minEnclosingCircle(blocked_region)
+    if plot is True:
+        fig, ax = plt.subplots(figsize=[6,3])
+        circle = plt.Circle((x,y), radius, facecolor='m', alpha=0.5)
+        ax.imshow(img)
+        fig.tight_layout()
+        ax.add_patch(circle)
+        plt.show()
     return ((x, y), radius)
 
 def _lowest_contour_in_hierarchy(contours, hierarchy):
