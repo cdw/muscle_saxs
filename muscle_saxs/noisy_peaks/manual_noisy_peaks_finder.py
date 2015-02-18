@@ -122,3 +122,11 @@ def optimize(center, img):
                   (c_y-peak_search/2, c_y+peak_search/2),
                   (1, sig_max), (1, sig_max)))
 
+def img_to_feature_array(img):
+    output = []
+    for x in range(img.shape[1]):
+        for y in range(img.shape[0]):
+            if not img[y,x] == 0:
+                output.append([x,y])
+    return np.array(output)
+
