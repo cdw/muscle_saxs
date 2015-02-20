@@ -11,42 +11,14 @@ import warnings
 import numpy as np
 from PIL import Image
 import cv2
+from support import *
 
 ## Configuration options
 SAMPLEFILE = 'sampleimg1.tif'
 
 
-## Small support functions
-def _image_as_numpy(filename):
-    """Load an image and convert it to a numpy array of floats."""
-    return np.array(Image.open(filename), dtype=np.float) 
-
-def _define_circle_points(center, radius):
-    """Create a list of pixel locations to look at on a circle.
-    Note that this isn't aliased etc.
-    """
-    res = np.pi/radius # set resolution to avoid double counting a pixel
-    x = center[0] + np.round(radius * np.cos(np.arange(-np.pi, np.pi, res)))
-    y = center[1] + np.round(radius * np.sin(np.arange(-np.pi, np.pi, res)))
-    return x, y
-
-def _yank_circle_pixels(img, center, radius):
-    """Return a list of pixel values in a circle from the passed image."""
-    x, y = _define_circle_points(center, radius) 
-    ## Filter out out-of-bounds points
-    yx = zip(y, x)  # yx b/c row,column
-    y_max, x_max = img.shape
-    inbounds = lambda yx: 0 <= yx[0] <= y_max and 0 <= yx[1] <= x_max
-    yx_inbounds = filter(inbounds, yx)
-    if len(yx) != len(yx_inbounds):
-        warnings.warn("Circle is clipped by image limits.")
-    ## Find pix
-    pix = [img[yx] for yx in yx_inbounds]
-    return pix
-
-
 ## Contour processing
-def _find_blocked_region(img, plot=False):
+def find_blocked_region(img, plot=False):
     """Locate the centrally blocked region of the image.
     Given an image, find the center region where the blocker is, defined as
     the inner-most (and roundest) area with pixel values less than two
@@ -69,8 +41,9 @@ def _find_blocked_region(img, plot=False):
         fig, ax = plt.subplots(figsize=[6,3])
         circle = plt.Circle((x,y), radius, facecolor='m', alpha=0.5)
         ax.imshow(img)
-        fig.tight_layout()
         ax.add_patch(circle)
+        plt.draw()
+        fig.tight_layout()
         plt.show()
     return ((x, y), radius)
 
@@ -117,3 +90,11 @@ def _roundest_contour(contours):
 def optimize_center_location(img, blocked_circle):
     ((x,y), radius) = blocked_circle
     #TODO incomplete
+
+
+## Test if run directly
+import matplotlib.pyplot as plt
+data = image_as_numpy(SAMPLEFILE)
+find_blocked_region(data, True)  # Let's take a look at the blocked region
+
+
