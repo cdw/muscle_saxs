@@ -181,7 +181,7 @@ def pixel_difference_log_prob(model, data):
     log_rf[np.nonzero(data==0)] = np.log(np.math.factorial(0)) #approx breaks
     prob = -m + d*np.log(m) - log_rf
     # Return the negative log likelihood
-    prob = -prob
+    #prob = -prob
     return prob
 
 def lnprob(p, size_row, size_col, real_img):
@@ -199,37 +199,40 @@ def lnprob(p, size_row, size_col, real_img):
     data = real_img
     #prob = np.sum(pixel_difference_log_prob(model, data))
     prob = np.sum(pixel_difference_log_prob(model, data))
-    return prob, model
+    return prob
 
 
 ## Test Run
 fn = 'sampleimg1.tif'
+import emcee
 def _image_as_numpy(filename):
     """Load an image and convert it to a numpy array of floats."""
     return np.array(Image.open(filename), dtype=np.float) 
 data = _image_as_numpy(fn)
-p0 = (57,   # mask center row
-      251,  # mask center col
-      15,   # mask radius
-      57,   # diffraction center row
-      251,  # diffraction center col
-      14,   # background a
-      220,  # background b
-      0.11, # background c
-      3.15, # background d
-      0.36, # background e
-      85,   # d10 spacing
-      15,   # d10 angle
-      1054, # d10 height
-      0.3,  # d10 spread
-      2.3,  # d10 decay
-      169,  # d20 spacing
-      267,  # d20 height
-      4,    # d20 spread
-      0.3)  # d20 decay
+p0 = np.array((
+    57,   # mask center row
+    251,  # mask center col
+    15,   # mask radius
+    57,   # diffraction center row
+    251,  # diffraction center col
+    14,   # background a
+    220,  # background b
+    0.11, # background c
+    3.15, # background d
+    0.36, # background e
+    85,   # d10 spacing
+    15,   # d10 angle
+    1054, # d10 height
+    0.3,  # d10 spread
+    2.3,  # d10 decay
+    169,  # d20 spacing
+    267,  # d20 height
+    4,    # d20 spread
+    0.3)) # d20 decay
 nwalkers = 100
+p0s = np.array([p0*np.random.uniform(.8,1.2) for i in range(nwalkers)])
 sampler = emcee.EnsembleSampler(100, len(p0), lnprob, args = [195, 487, data])
-walker_out = sampler.run_mcmc(np.tile(p0, (nwalkers,1)), 10)
+walker_out = sampler.run_mcmc(p0s, 10)
 
 
 ndim= len(p0)
