@@ -18,6 +18,7 @@ Created by Dave Williams on 2015-02-19
 """
 
 # System imports
+import copy
 import cv2
 from scipy import ndimage, optimize
 import matplotlib.pyplot as plt
@@ -72,6 +73,7 @@ def peaks_from_image(img, smooth=1, mask_percent=80, plot = False):
         plt.show()
     zipped_maxes = zip(maxes[0], maxes[1])
     return zipped_maxes
+
 
 ## Find peak lines and cluster
 def _dist_to_line_gen(x1, y1, theta):
@@ -176,6 +178,7 @@ def optimize_thetas(center, points, starting_thetas=None,
         plt.show()
     return success, thetas, points_out
 
+
 ## Sort peaks into pairs
 def extract_d10(thetas, center, points, horizontal = True):
     """Return the two points representing the most likely d10 pair
@@ -199,7 +202,7 @@ def extract_d10(thetas, center, points, horizontal = True):
         warnings.warn("supposed d10 points are more than 10% different")
         return (points[hori][sortind[0]], points[hori][sortind[1]])
     
-def extract_pairs(center, point_clus):
+def extract_pairs(center, point_clus, plot=False, pimg=None):
     """Return sets of points representing pairs
     Takes:
         center: the center of the diffraction pattern
@@ -221,6 +224,7 @@ def extract_pairs(center, point_clus):
             warnings.warn("Point "+str(pt)+" has no match within tolerance")
             return None, pts
     # Apply across clusters
+    point_clus = copy.deepcopy(point_clus)
     pair_clus = []
     for points in point_clus:
         pairs = []
@@ -230,26 +234,21 @@ def extract_pairs(center, point_clus):
             if pair is not None:
                 pairs.append(pair)
         pair_clus.append(pairs)
+    # Plot if option to plot passed
+    if plot is True:
+        colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w', '.25', '.5', '.75']
+        fig, ax = plt.subplots(figsize=[6,3])
+        for line in pair_clus:
+            for pair in line:
+                c = colors.pop(0)
+                ax.scatter(pair[0][1], pair[0][0], c=c, s=40)
+                ax.scatter(pair[1][1], pair[1][0], c=c, s=40)
+        if pimg is not None:
+            ax.imshow(pimg)
+        plt.draw()
+        plt.tight_layout()
+        plt.show()
     return pair_clus
-    
-    ## Sort points by distance
-    #d_f = lambda p: np.hypot(p[1] - center[0], p[0] - center[1])
-    #dists1 = [d_f(p) for p in points[0]]
-    #dists2 = [d_f(p) for p in points[1]]
-    #sortind1 = np.argsort(dists1)
-    #sortind2 = np.argsort(dists1)
-    ## Pair up
-    #diffs1 = np.array([np.abs((dists1-d)/d) for d in dists1])
-    #diffs1[diffs1==0] = 1
-    #matches1 = [np.argmin(d) for d in diffs1]
-    #matches1copy = 
-    #while len(matches1)>1:
-
-    #if dists[sortind[1]] < dists[sortind[0]]*1.10:
-        #    return (points[hori][sortind[0]], points[hori][sortind[1]])
-        #else:
-            #    warnings.warn("supposed d10 points are more than 10% different")
-            #    return (points[hori][sortind[0]], points[hori][sortind[1]])
 
 
 ## Test if run directly
@@ -260,6 +259,7 @@ def main():
     max_points = peaks_from_image(img, plot=True)
     success, thetas, clus_peaks = optimize_thetas(block_center,
                                   max_points, plot=True, pimg=img)
+    pairs = extract_pairs(block_center, clus_peaks, True, img)
 
 if __name__ == '__main__':
 	main()
