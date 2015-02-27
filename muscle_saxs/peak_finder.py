@@ -251,6 +251,19 @@ def extract_pairs(center, point_clus, plot=False, pimg=None):
     return pair_clus
 
 
+## Find peak properties
+def _roi(peak, img, region=2):
+    """Extract a ROI around a peak, extending region pixels in each dir"""
+    roi = img[peak[0]-region:peak[0]+region, peak[1]-region:peak[1]+region]
+    return roi
+
+def peak_height(peak, img, region=2):
+    """Simple peak height extraction, max of immediate region"""
+    roi = _roi(peak, img, region)
+    height = roi.max()
+    return height
+
+
 ## Test if run directly
 def main():
     SAMPLEFILE = 'sampleimg1.tif'
