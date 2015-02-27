@@ -6,15 +6,13 @@ xray_background.py - remove background from small angle x-ray scattering imgs
 Created by Dave Williams on 2014-10-09
 """
 
-import os, sys
+# System imports
 import warnings
 import numpy as np
-from PIL import Image
 import cv2
+import matplotlib.pyplot as plt
+# Local package imports
 from support import *
-
-## Configuration options
-SAMPLEFILE = 'sampleimg1.tif'
 
 
 ## Contour processing
@@ -93,8 +91,11 @@ def optimize_center_location(img, blocked_circle):
 
 
 ## Test if run directly
-import matplotlib.pyplot as plt
-data = image_as_numpy(SAMPLEFILE)
-find_blocked_region(data, True)  # Let's take a look at the blocked region
+def main():
+    SAMPLEFILE = 'sampleimg1.tif'
+    data = image_as_numpy(SAMPLEFILE)
+    (bx, by), br = find_blocked_region(data, True)  # Let's look at the blocker
 
+if __name__ == '__main__':
+	main()
 
