@@ -39,7 +39,7 @@ def peaks_from_image(img, smooth=1, mask_percent=80, plot = False):
         peaks: peak locations matching 
     """
     # Smooth the image and find local maxima
-    smoothed = ndimage.filters.gaussian_filter(img, 1)
+    smoothed = ndimage.filters.gaussian_filter(img, smooth)
     maxes = ndimage.filters.maximum_filter(smoothed, size=(3,3))==smoothed
     # Mask image regions that we don't want peaks in
     above_background = img>np.percentile(img, mask_percent)
@@ -292,6 +292,37 @@ def peak_height(peak, img, region=2):
     height = roi.max()
     return height
 
+def fit_peak(peak, img, region=6, starting = None):
+    """Fit a peak and surrounding area to a Pearson VII distribution
+    Takes:
+        peak: row,col location of peak in img
+        img: peak img
+        region: area to fit over, default (6) gives 12x12 roi
+        starting:
+    Gives:
+
+    """
+    # Residual for optimization
+    def residual(hkm, roi, size, center):
+        """Return the residual from fitting a peak to the passed ROI"""
+        H, K, M = hkm # Pearson peak coeffs
+        res = np.sum(np.abs(roi - pearson(size, center, H, K, M)))
+        return res
+    # Snag roi, set up initial values
+    roi = _roi(peak, img, region)
+    size = roi.shape
+    center = np.divide(size, 2) - 1
+    H_start = np.max(roi)
+    K_start, M_start = 0.8, 0.4 # educated guesses
+    # Optimize peak parts
+    opt_res = optimize.minimize(residual, (H_start, K_start, M_start),
+                                args = (roi, size, center), 
+                                jac = False,
+                                bounds = ((0, np.inf), (0, np.inf), 
+                                          (0, np.inf)))
+    success = opt_res['success']
+    H, K, M = opt_res['x'] 
+    return H, K, M
 
 ## Test if run directly
 def main():

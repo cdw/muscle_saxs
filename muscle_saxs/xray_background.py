@@ -28,13 +28,17 @@ def find_blocked_region(img, plot=False):
         center - (x,y) value locations of the center of the blocked region
         radius - the radius of the blocked region
     """
+    # Segment the image
     bar = img.mean() + 2 * img.std()  # bar to leap
     bin_img = (img<bar).astype(np.uint8)*255 # binary that image
+    # Process the image into contours
     cont, hier = cv2.findContours(bin_img, cv2.cv.CV_RETR_LIST,
                                   cv2.cv.CV_CHAIN_APPROX_NONE)
     hier = hier[0]
+    # Blocked region is lowest contour, create a circle for it
     blocked_region = _lowest_contour_in_hierarchy(cont, hier)
     ((x, y), radius) = cv2.minEnclosingCircle(blocked_region)
+    # Plot if option to do so is passed
     if plot is True:
         fig, ax = plt.subplots(figsize=[6,3])
         circle = plt.Circle((x,y), radius, facecolor='m', alpha=0.5)
