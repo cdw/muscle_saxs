@@ -180,28 +180,6 @@ def optimize_thetas(center, points, starting_thetas=None,
 
 
 ## Sort peaks into pairs
-def extract_d10(thetas, center, points, horizontal = True):
-    """Return the two points representing the most likely d10 pair
-    Takes:
-        thetas: the two angles of the diffraction lines
-        center: the center of the diffraction pattern
-        points: the points, clustered by theta
-        horizontal: True if d10 line is closer to horizontal
-    """
-    # Choose the horizontal line, or not as determined by passed options
-    hori = int(np.abs(thetas[0]) > np.abs(thetas[1]))
-    if horizontal is False:
-        hori = int(not hori)
-    # Sort points by distance
-    d_f = lambda p: np.hypot(p[1] - center[0], p[0] - center[1])
-    dists = [d_f(p) for p in points[hori]]
-    sortind = np.argsort(dists)
-    if dists[sortind[1]] < dists[sortind[0]]*1.10:
-        return (points[hori][sortind[0]], points[hori][sortind[1]])
-    else:
-        warnings.warn("supposed d10 points are more than 10% different")
-        return (points[hori][sortind[0]], points[hori][sortind[1]])
-    
 def extract_pairs(center, point_clus, plot=False, pimg=None):
     """Return sets of points representing pairs
     Takes:
@@ -249,6 +227,57 @@ def extract_pairs(center, point_clus, plot=False, pimg=None):
         plt.tight_layout()
         plt.show()
     return pair_clus
+
+def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
+    """Return the two points representing the most likely d10 pair
+    Takes:
+        pairs: pairs of points clustered by theta angle and center distance
+        horizontal: True if d10 line is closer to horizontal
+        plot: plot if true
+        pimg: img to superimpose plot on if passed
+    Returns:
+        d10: points in pair line closest to center
+    """
+    # Choose the horizontal line, or not as determined by passed options
+    hori = np.argmin([np.mean([row_diff(p) for p in pairs[i]]) 
+                      for i in range(len(pairs))])
+    if horizontal is False:
+        hori = int(not hori)
+    # Sort points by distance
+    d_f = lambda p: np.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1])
+    dists = [d_f(p) for p in pairs[hori]]
+    sortind = np.argsort(dists)
+    d10 = pairs[hori][sortind[0]]
+    # Plot if option to plot passed
+    if plot is True:
+        fig, ax = plt.subplots(figsize=[6,3])
+        ax.scatter(d10[0][1], d10[0][0], c='m', s=40)
+        ax.scatter(d10[1][1], d10[1][0], c='m', s=40)
+        if pimg is not None:
+            ax.imshow(pimg)
+        plt.draw()
+        plt.tight_layout()
+        plt.show()
+    return d10
+    
+
+## Use peaks to find info about image
+def find_diffraction_center(pairs, which_list='longest'):
+    """ Find the diffraction center based off of pairs of points.
+    By default, use the longest list of pairs.
+    Takes:
+        pairs: lists of point pairs, output of extract_pairs
+        which_list: "longest" or index location in pairs
+    Gives:
+        center: row,col center of the diffraction image
+    """
+    # Which pair list to use
+    if which_list == 'longest':
+        which_list = np.argmax(map(len, pairs))
+    # Find mean middle point
+    mid = lambda pair: np.add(np.subtract(pair[0], pair[1])/2.0, pair[1])
+    center = np.mean([mid(p) for p in pairs[which_list]], 0)
+    return center
 
 
 ## Find peak properties
