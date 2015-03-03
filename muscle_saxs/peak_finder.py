@@ -302,6 +302,7 @@ def main():
     success, thetas, clus_peaks = optimize_thetas(block_center,
                                   max_points, plot=True, pimg=img)
     pairs = extract_pairs(block_center, clus_peaks, True, img)
+    d10 = extract_d10(pairs, plot=True, pimg=img)
 
 if __name__ == '__main__':
 	main()

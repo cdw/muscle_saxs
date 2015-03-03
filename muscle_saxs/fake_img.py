@@ -13,24 +13,8 @@ import numpy as np
 from scipy.misc import factorial
 from PIL import Image
 import cv2
+import support
 
-## Support/utility functions
-def blank(size):
-    """Given a (row, col) size, create a blank numpy array"""
-    return np.zeros(size)
-
-def evaluate_to_img(func, size):
-    """Evaluate a function at every grid point in x and y.
-    Takes:
-        func - f(x,y) which returns a single value
-        size - (row, col)
-    Returns:
-        eval - grid of results
-    """
-    x_ind = np.arange(0, size[0])
-    y_ind = np.arange(0, size[1])
-    eval = func(x_ind[:, None], y_ind[None, :])
-    return eval
 
 ## Image part generation
 def background(size, center, a, b, c, d, e):
@@ -46,17 +30,10 @@ def background(size, center, a, b, c, d, e):
     Returns:
         img - the generated background image
     """
-    dist = lambda x,y: np.hypot((center[0]-x), (center[1]-y))
-    exp = lambda x,y,j,k: j * np.exp(-dist(x,y)*k)
-    back = lambda x,y: a + exp(x,y,b,c) + exp(x,y,d,e)
-    img = evaluate_to_img(back, size)
-    return img
+    return support.double_exponential(size, center, a, b, c, d, e)
 
 def pearson(size, center, H, K, M):
-    """Return an image with a symmetrical Pearson VII distribution.
-    This is defined as:
-        pear = H * (1 + K**2 * dist**2 / M)**-M
-    Where the distance is from the passed center.
+    """Create a Pearson VII peak from the support functions.
     Takes:
         size - (row, col) size of the image to generate
         center - the (row, col) center of the background image
@@ -66,11 +43,7 @@ def pearson(size, center, H, K, M):
     Returns:
         img - the generated distribution image
     """
-    dist = lambda x,y: np.hypot((center[0]-x), (center[1]-y))
-    sq = lambda x: np.power(x,2)
-    pear = lambda x,y: H * np.power(1 + (sq(K) * sq(dist(x,y))) / M, -M)
-    img = evaluate_to_img(pear, size)
-    return img
+    return support.pearson(size, center, H, K, M)
 
 def masking(size, center, radius):
     """Create a circular masking image, with 0s in the masked region.. 
@@ -202,44 +175,48 @@ def lnprob(p, size_row, size_col, real_img):
     return prob
 
 
+## Test if run directly
+def main():
+    # Set up a sample run
+    fn = 'sampleimg1.tif'
+    import emcee
+    data = support.image_as_numpy(fn)
+    p0 = np.array((
+        57,   # mask center row
+        251,  # mask center col
+        15,   # mask radius
+        57,   # diffraction center row
+        251,  # diffraction center col
+        14,   # background a
+        220,  # background b
+        0.11, # background c
+        3.15, # background d
+        0.36, # background e
+        85,   # d10 spacing
+        15,   # d10 angle
+        1054, # d10 height
+        0.3,  # d10 spread
+        2.3,  # d10 decay
+        169,  # d20 spacing
+        267,  # d20 height
+        4,    # d20 spread
+        0.3)) # d20 decay
+    nwalkers = 100
+    p0s = np.array([p0*np.random.uniform(.8,1.2) for i in range(nwalkers)])
+    # Run a sample run
+    sampler = emcee.EnsembleSampler(100, len(p0), lnprob, 
+                                    args = [195, 487, data])
+    walker_out = sampler.run_mcmc(p0s, 10)
+    # Plot the parameter distributions
+    ndim= len(p0)
+    for i in range(ndim):
+        plt.figure()
+        plt.hist(sampler.flatchain[:,i], 100, color="k", histtype="step")
+        plt.title("Dimension {0:d}".format(i))
+
+    plt.show()
+
+if __name__ == '__main__':
+	main()
 ## Test Run
-fn = 'sampleimg1.tif'
-import emcee
-def _image_as_numpy(filename):
-    """Load an image and convert it to a numpy array of floats."""
-    return np.array(Image.open(filename), dtype=np.float) 
-data = _image_as_numpy(fn)
-p0 = np.array((
-    57,   # mask center row
-    251,  # mask center col
-    15,   # mask radius
-    57,   # diffraction center row
-    251,  # diffraction center col
-    14,   # background a
-    220,  # background b
-    0.11, # background c
-    3.15, # background d
-    0.36, # background e
-    85,   # d10 spacing
-    15,   # d10 angle
-    1054, # d10 height
-    0.3,  # d10 spread
-    2.3,  # d10 decay
-    169,  # d20 spacing
-    267,  # d20 height
-    4,    # d20 spread
-    0.3)) # d20 decay
-nwalkers = 100
-p0s = np.array([p0*np.random.uniform(.8,1.2) for i in range(nwalkers)])
-sampler = emcee.EnsembleSampler(100, len(p0), lnprob, args = [195, 487, data])
-walker_out = sampler.run_mcmc(p0s, 10)
-
-
-ndim= len(p0)
-for i in range(ndim):
-    plt.figure()
-    plt.hist(sampler.flatchain[:,i], 100, color="k", histtype="step")
-    plt.title("Dimension {0:d}".format(i))
-
-plt.show()
 
