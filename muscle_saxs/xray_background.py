@@ -89,16 +89,62 @@ def _roundest_contour(contours):
 
 ## Optimize the circle center based on blocked region
 
+def background_collapse(center, img, thetas, plot=False):
+    """Collapse the image background, ignoring the peak regions.
+    Good ideas to be had here: http://goo.gl/2xEApw
+    Takes:
+        center: x,y center of blocked image
+        img: from which background is extracted
+        thetas: angles of lines we wish to miss
+        plot: if we should plot the exclusion regions and profile
+    Gives:
+        back: profile of background
+    """
+    # Construct a radial distance img
+    row, col = np.indices(img.shape)
+    r = np.sqrt((row-center[0])**2 + (col-center[1])**2)
+    # Coerce into ints for bincount
+    r = r.astype(np.int)
+    img = img.astype(np.int)
+    # Mask the lines
+    mask = Image.new('1', img.shape[::-1], color=1)
+    bb = [center[0] - mask.size[0], center[1] - mask.size[1], 
+          center[0] + mask.size[0], center[1] + mask.size[1]]
+    #m_thetas = np.concatenate(([t+np.pi for t in thetas], thetas))
+    m_thetas = thetas
+    m_thetas = np.round(np.degrees(m_thetas)).astype(np.int)
+    theta_pm = 20
+    m_angles = [(t-theta_pm, t+theta_pm) for t in m_thetas]
+    draw = ImageDraw.Draw(mask)
+    for angle in m_angles:
+        draw.pieslice(bb, angle[0], angle[1], fill=0)
+    mask = np.array(mask.getdata(), np.uint).reshape(
+        mask.size[1], mask.size[0])
+    plt.imshow(img*mask, interpolation='nearest')
+    img = img*mask
+    # Do the counting
+    flat_count = np.bincount(r.ravel(), img.ravel())
+    rad_occurances = np.bincount(r.ravel()) 
+    radial_profile = flat_count/rad_occurances
+    # Kill the blocked region
+    highest_ind = radial_profile.argmax()
+    background = radial_profile[highest_ind:]
+    return radial_profile
+
+
 def optimize_center_location(img, blocked_circle):
     ((x,y), radius) = blocked_circle
     #TODO incomplete
-
+    
 
 ## Test if run directly
 def main():
+    import peak_finder
     SAMPLEFILE = 'sampleimg1.tif'
-    data = image_as_numpy(SAMPLEFILE)
-    (bx, by), br = find_blocked_region(data, True)  # Let's look at the blocker
+    data = image_as_numpy(SAMPLEFILE) # load
+    bcenter, brad = find_blocked_region(data, True) # find blocker
+    unorg_peaks = peak_finder.peaks_from_image(data, plot=True) # find peaks
+    success, thetas, peaks = peak_finder.optimize_thetas(bcenter, unorg_peaks)
 
 if __name__ == '__main__':
 	main()
