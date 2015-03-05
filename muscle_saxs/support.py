@@ -93,3 +93,6 @@ def double_exponential(size, center, a, b, c, d, e):
     img = evaluate_to_img(back, size)
     return img
 
+def double_exponential_1d(x, a, b, c, d, e): 
+    """Return a 1D double exponential function at passed x values"""
+    return a + b*np.exp(-x*c) + d*np.exp(-x*e)

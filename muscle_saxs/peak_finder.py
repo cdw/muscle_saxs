@@ -312,8 +312,14 @@ def fit_peak(peak, img, region=6, starting = None):
     roi = _roi(peak, img, region)
     size = roi.shape
     center = np.divide(size, 2) - 1
-    H_start = np.max(roi)
-    K_start, M_start = 0.8, 0.4 # educated guesses
+    if starting is not None:
+        # Unpack and use
+        H_start, K_start, M_start = starting
+    else:
+        # Educated guesses
+        H_start = np.max(roi)
+        K_start = 0.8
+        M_start = 0.4
     # Optimize peak parts
     opt_res = optimize.minimize(residual, (H_start, K_start, M_start),
                                 args = (roi, size, center), 
