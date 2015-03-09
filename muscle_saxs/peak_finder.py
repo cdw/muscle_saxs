@@ -259,7 +259,20 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
         plt.tight_layout()
         plt.show()
     return d10
-    
+
+def extract_highest(peaks, img, n_highest=2):
+    """Extract the n highest peaks.
+    Takes:
+        peaks: list of row,col peak locations
+        img: img which peaks are drawn from
+        n_highest: number of peaks to extract (2)
+    Gives:
+        highest: the n highest peaks
+    """
+    heights = [peak_height(p, img) for p in peaks]
+    ordered = np.argsort(heights)
+    highest = [peaks[ind] for ind in ordered[-n_highest:]]
+    return highest
 
 ## Use peaks to find info about image
 def find_diffraction_center(pairs, which_list='longest'):
