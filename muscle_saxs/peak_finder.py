@@ -45,7 +45,7 @@ def peaks_from_image(img, smooth=1, mask_percent=80, plot = False):
     above_background = img>np.percentile(img, mask_percent)
     blocked_region = np.ones_like(img, dtype=np.int8)
     (b_x, b_y), b_r = find_blocked_region(img)
-    extra_around_block = 5 # pix number to add to blocked radius
+    extra_around_block = 10 # pix number to add to blocked radius
     cv2.circle(blocked_region, (int(round(b_x)), int(round(b_y))), 
                int(round(b_r+extra_around_block)), 0, -1)
     edge_region = np.ones_like(img, dtype=np.int8)
@@ -180,11 +180,11 @@ def optimize_thetas(center, points, starting_thetas=None,
 
 
 ## Sort peaks into pairs
-def extract_pairs(center, point_clus, plot=False, pimg=None):
+def extract_pairs(center, points, plot=False, pimg=None):
     """Return sets of points representing pairs
     Takes:
         center: the center of the diffraction pattern
-        point_clus: the points, clustered by theta
+        points: the points, clustered by theta or not
     """
     def closest_point(pt, pts, tol=0.10):
         """Find closest pt in pts to pt with tolerance tol"""
@@ -201,32 +201,28 @@ def extract_pairs(center, point_clus, plot=False, pimg=None):
         else:
             warnings.warn("Point "+str(pt)+" has no match within tolerance")
             return None, pts
-    # Apply across clusters
-    point_clus = copy.deepcopy(point_clus)
-    pair_clus = []
-    for points in point_clus:
-        pairs = []
-        while len(points)>1:
-            point = points.pop(0)
-            pair, points = closest_point(point, points)
-            if pair is not None:
-                pairs.append(pair)
-        pair_clus.append(pairs)
+    # Apply to all points
+    points = copy.deepcopy(points)
+    pairs = []
+    while len(points)>1:
+        point = points.pop(0)
+        pair, points = closest_point(point, points)
+        if pair is not None:
+            pairs.append(pair)
     # Plot if option to plot passed
     if plot is True:
         colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w', '.25', '.5', '.75']
         fig, ax = plt.subplots(figsize=[6,3])
-        for line in pair_clus:
-            for pair in line:
-                c = colors.pop(0)
-                ax.scatter(pair[0][1], pair[0][0], c=c, s=40)
-                ax.scatter(pair[1][1], pair[1][0], c=c, s=40)
+        for pair in pairs:
+            c = colors.pop(0)
+            ax.scatter(pair[0][1], pair[0][0], c=c, s=40)
+            ax.scatter(pair[1][1], pair[1][0], c=c, s=40)
         if pimg is not None:
             ax.imshow(pimg)
         plt.draw()
         plt.tight_layout()
         plt.show()
-    return pair_clus
+    return pairs
 
 def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
     """Return the two points representing the most likely d10 pair
@@ -345,14 +341,14 @@ def fit_peak(peak, img, region=6, starting = None):
 
 ## Test if run directly
 def main():
-    SAMPLEFILE = 'sampleimg1.tif'
+    SAMPLEFILE = './test_images/sampleimg1.tif'
     img = image_as_numpy(SAMPLEFILE)
     block_center, block_radius = find_blocked_region(img, plot=True)
     max_points = peaks_from_image(img, plot=True)
     success, thetas, clus_peaks = optimize_thetas(block_center,
                                   max_points, plot=True, pimg=img)
-    pairs = extract_pairs(block_center, clus_peaks, True, img)
+    pairs = extract_pairs(block_center, max_points, True, img)
     d10 = extract_d10(pairs, plot=True, pimg=img)
-
+    
 if __name__ == '__main__':
 	main()
