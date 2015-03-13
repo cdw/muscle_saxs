@@ -23,18 +23,19 @@ import cv2
 from scipy import ndimage, optimize
 import matplotlib.pyplot as plt
 # Local package imports
-from xray_background import find_blocked_region
+import blocked_region
 from support import *
 
 
 ## Build up the peak locations
-def peaks_from_image(img, smooth=1, mask_percent=80, plot = False):
+def peaks_from_image(img, block, smooth=1, mask_percent=80, plot = False):
     """Return peak locations from an img.
     Takes:
         img: image to find peaks in
+        block: ((center_col, center_row), center_rad) of the blocked region
         smooth: the (odd) number of pixels to smooth over
         mask_percent: the brightness cutoff for peak locations (%)
-        plot: whether or not to plot the points
+        plot: whether or not to plot the points, or axis to use
     Gives:
         peaks: peak locations matching 
     """
@@ -44,7 +45,7 @@ def peaks_from_image(img, smooth=1, mask_percent=80, plot = False):
     # Mask image regions that we don't want peaks in
     above_background = img>np.percentile(img, mask_percent)
     blocked_region = np.ones_like(img, dtype=np.int8)
-    (b_x, b_y), b_r = find_blocked_region(img)
+    (b_x, b_y), b_r = block
     extra_around_block = 10 # pix number to add to blocked radius
     cv2.circle(blocked_region, (int(round(b_x)), int(round(b_y))), 
                int(round(b_r+extra_around_block)), 0, -1)
@@ -62,8 +63,11 @@ def peaks_from_image(img, smooth=1, mask_percent=80, plot = False):
     max_img = maxes * masked
     maxes = max_img.nonzero()
     # Plot if desired
-    if plot is True:
-        fig, ax = plt.subplots(figsize=[6,3])
+    if plot is not False:
+        if plot is True:
+            fig, ax = plt.subplots(figsize=[6,3])
+        else:
+            ax = plot
         ax.imshow(masked)
         ax.scatter(maxes[1], maxes[0], c='w', s=30)
         ax.imshow(masked) # resets limits
@@ -135,7 +139,7 @@ def optimize_thetas(center, points, starting_thetas=None,
         center: (x,y) center of blocked region
         points: [(y1,x1),(y2,x2)...] peak points
         starting_thetas: (ang1, ang2) or None (default of 0, pi/4)
-        plot: to plot or not, that is this question
+        plot: to plot or not, that is this question (or what axis to use?)
         pimg: optional img to use in plotting
     Gives:
         success: True if the optimization converged
@@ -158,7 +162,7 @@ def optimize_thetas(center, points, starting_thetas=None,
     # Cluster points by final thetas
     points_out = _cluster_by_line_dist(thetas[0], thetas[1], center, points)
     # Plot if option to plot passed
-    if plot is True:
+    if plot is not False:
         po = [np.array(p) for p in points_out]
         x, y = center
         t1, t2 = thetas
@@ -166,13 +170,17 @@ def optimize_thetas(center, points, starting_thetas=None,
         t1x2, t1y2 = x-50, y-50*np.tan(t1) 
         t2x1, t2y1 = x+50, y+50*np.tan(t2) 
         t2x2, t2y2 = x-50, y-50*np.tan(t2) 
-        fig, ax = plt.subplots(figsize=[6,3])
+        if plot is True:
+            fig, ax = plt.subplots(figsize=[6,3])
+        else:
+            ax = plot
         ax.scatter(po[0][:,1], po[0][:,0], c='g', s=40)
         ax.scatter(po[1][:,1], po[1][:,0], c='r', s=40)
         ax.plot([t1x1, t1x2], [t1y1, t1y2], color = 'g', linewidth=3)
         ax.plot([t2x1, t2x2], [t2y1, t2y2], color = 'r', linewidth=3)
         if pimg is not None:
             ax.imshow(pimg)
+        ax.set_title('Fiber line identification')
         plt.draw()
         plt.tight_layout()
         plt.show()
@@ -185,24 +193,39 @@ def extract_pairs(center, points, plot=False, pimg=None):
     Takes:
         center: the center of the diffraction pattern
         points: the points, clustered by theta or not
+        plot: True to plot, or axis to use
+        pimg: image points taken from, for plotting
     """
+    dist_f = lambda p: np.hypot(p[1] - center[0], p[0] - center[1])
+    ang_f = lambda pl, pr: np.arctan2(pr[1]-pl[1], pr[0]-pl[0])
     def closest_point(pt, pts, tol=0.10):
         """Find closest pt in pts to pt with tolerance tol"""
         # Find distances
-        d_f = lambda p: np.hypot(p[1] - center[0], p[0] - center[1])
-        dists = [d_f(p) for p in pts]
-        dist = d_f(pt)
-        # Find closest match in distance
-        match = np.argmin(np.abs((dists-dist)/dist))
+        # Note that both dists and angles (below) are normalized
+        dist = dist_f(pt)
+        dists = [(dist_f(p)-dist)/dist for p in pts]
+        # Find angles
+        rev_center = (center[1], center[0])
+        if pt[1] < center[0]: # vec in quads 1,4
+            pt_to_cent = ang_f(pt, rev_center)
+            angles = [(pt_to_cent - ang_f(rev_center, p))/np.pi for p in pts]
+        else: # vec in quads 2,3
+            pt_to_cent = ang_f(rev_center, pt)
+            angles = [(pt_to_cent - ang_f(p, rev_center))/np.pi for p in pts]
+        # Find closest match in distance and angle
+        ang_and_dist = np.abs(np.multiply(angles, dists))
+        match = np.argmin(ang_and_dist)
         # Check that match is within tolerance
-        if dist*(1-tol) <= dists[match] <= dist*(1+tol):
+        if dists[match] <= tol:
             pt2 = pts.pop(match)
             return (pt, pt2), pts
         else:
-            warnings.warn("Point "+str(pt)+" has no match within tolerance")
+            msg = "Point "+str(pt)+" has no match within tolerance"
+            warnings.warn(msg)
             return None, pts
     # Apply to all points
     points = copy.deepcopy(points)
+    points = [points[i] for i in np.argsort(map(dist_f, points))]
     pairs = []
     while len(points)>1:
         point = points.pop(0)
@@ -210,15 +233,20 @@ def extract_pairs(center, points, plot=False, pimg=None):
         if pair is not None:
             pairs.append(pair)
     # Plot if option to plot passed
-    if plot is True:
-        colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w', '.25', '.5', '.75']
-        fig, ax = plt.subplots(figsize=[6,3])
+    if plot is not False:
+        colors = list(np.tile(
+            ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w', '.25', '.5', '.75'], 5))
+        if plot is True:
+            fig, ax = plt.subplots(figsize=[6,3])
+        else:
+            ax = plot
         for pair in pairs:
             c = colors.pop(0)
             ax.scatter(pair[0][1], pair[0][0], c=c, s=40)
             ax.scatter(pair[1][1], pair[1][0], c=c, s=40)
         if pimg is not None:
             ax.imshow(pimg)
+        ax.set_title('Peak pairs matched by color')
         plt.draw()
         plt.tight_layout()
         plt.show()
@@ -229,14 +257,21 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
     Takes:
         pairs: pairs of points clustered by theta angle and center distance
         horizontal: True if d10 line is closer to horizontal
-        plot: plot if true
+        plot: plot if true, or axis to use
         pimg: img to superimpose plot on if passed
     Returns:
         d10: points in pair line closest to center
     """
+    # Find relevant pair info
+    d_f = lambda p: np.hypot(p[0][0]-p[0][1], p[1][0]-p[1][1])
+    def a_f(pair):
+        pl = pair[pair[0][0]>pair[0][1]]
+        pr = pair[pair[0][0]<pair[0][1]]
+        return np.arctan2(pr[0]-pl[0], pr[1]-pl[1])
+    dists = map(d_f, pairs)
+    angles = map(a_f, pairs)
     # Choose the horizontal line, or not as determined by passed options
-    hori = np.argmin([np.mean([row_diff(p) for p in pairs[i]]) 
-                      for i in range(len(pairs))])
+    hori = np.argmin(np.abs(angles))
     if horizontal is False:
         hori = int(not hori)
     # Sort points by distance
@@ -245,8 +280,11 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
     sortind = np.argsort(dists)
     d10 = pairs[hori][sortind[0]]
     # Plot if option to plot passed
-    if plot is True:
-        fig, ax = plt.subplots(figsize=[6,3])
+    if plot is not False:
+        if plot is True:
+            fig, ax = plt.subplots(figsize=[6,3])
+        else:
+            ax = plot
         ax.scatter(d10[0][1], d10[0][0], c='m', s=40)
         ax.scatter(d10[1][1], d10[1][0], c='m', s=40)
         if pimg is not None:
@@ -343,11 +381,11 @@ def fit_peak(peak, img, region=6, starting = None):
 def main():
     SAMPLEFILE = './test_images/sampleimg1.tif'
     img = image_as_numpy(SAMPLEFILE)
-    block_center, block_radius = find_blocked_region(img, plot=True)
-    max_points = peaks_from_image(img, plot=True)
-    success, thetas, clus_peaks = optimize_thetas(block_center,
+    block = blocked_region.find_blocked_region(img, plot=True)
+    max_points = peaks_from_image(img, block, plot=True)
+    success, thetas, clus_peaks = optimize_thetas(block[0],
                                   max_points, plot=True, pimg=img)
-    pairs = extract_pairs(block_center, max_points, True, img)
+    pairs = extract_pairs(block[0], max_points, True, img)
     d10 = extract_d10(pairs, plot=True, pimg=img)
     
 if __name__ == '__main__':
