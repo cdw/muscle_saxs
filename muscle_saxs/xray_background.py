@@ -67,7 +67,7 @@ def background_collapse(center, img, thetas, plot=False):
         plt.draw()
         plt.tight_layout()
         plt.show()
-    return background, background_dists
+    return background_dists, background
 
 def _fit_double_exp(trace_y, trace_x, plot=False):
     """Fit a double exponential function to the passed trace.
@@ -83,8 +83,7 @@ def _fit_double_exp(trace_y, trace_x, plot=False):
     resi = lambda g: diff(dexp(trace_x, g[0], g[1], g[2], g[3], g[4]), trace_y)
     # Guess some values then optimize
     guess = [1.0, 1000.0, 0.01, 5000.0, 0.1]
-    opt_res = optimize.minimize(resi, guess, jac=False, bounds = (
-        (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf)))
+    opt_res = optimize.minimize(resi, guess, jac=False, bounds = ( (0, np.inf), (0, np.inf), (0, 1), (0, np.inf), (0, 1)))
     success = opt_res['success']
     vals = opt_res['x']
     # Plot if desired
@@ -171,7 +170,7 @@ def main():
     block = find_blocked_region(data, True) # find blocker
     unorg_peaks = peak_finder.peaks_from_image(data, block, plot=True)
     success, thetas, peaks = peak_finder.optimize_thetas(block[0], unorg_peaks)
-    back, back_dists = background_collapse(block[0], data, thetas, True)
+    back_dists, back = background_collapse(block[0], data, thetas, True)
     back_params = _fit_double_exp(back, back_dists, True)
 
 if __name__ == '__main__':
