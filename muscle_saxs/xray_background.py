@@ -11,6 +11,9 @@ import numpy as np
 from scipy import optimize
 import cv2
 import matplotlib.pyplot as plt
+# Local module imports
+import support
+import fake_img
 
 
 ## Find the background profile and fit it
@@ -66,7 +69,7 @@ def background_collapse(center, img, thetas, plot=False):
         plt.show()
     return background, background_dists
 
-def fit_double_exp(trace_y, trace_x, plot=False):
+def _fit_double_exp(trace_y, trace_x, plot=False):
     """Fit a double exponential function to the passed trace.
     Ignore the region to the left of the peak. 
     Takes:
@@ -75,7 +78,7 @@ def fit_double_exp(trace_y, trace_x, plot=False):
         vals: optimized parameters for a double exp
     """
     # A residual function to test how good our fits are
-    dexp = double_exponential_1d 
+    dexp = support.double_exponential_1d 
     diff = lambda i, j: np.sum(np.abs(np.subtract(i,j)))
     resi = lambda g: diff(dexp(trace_x, g[0], g[1], g[2], g[3], g[4]), trace_y)
     # Guess some values then optimize
@@ -96,6 +99,69 @@ def fit_double_exp(trace_y, trace_x, plot=False):
     return vals
 
 
+## Generate a fake background and subtract it from a passed image
+
+def _fake_background(size, mask_center, mask_rad, diff_center, back_vals):
+    """Generate a fake background image from the passed (fitted) values.
+    
+    Args:
+        size (tuple): (row, col) size of image to generate
+        mask_center: the center of the masked region
+        mask_rad: the radius of the masked region
+        diff_center: the center of the diffraction (and background) pattern
+        back_vals (iter): the (a,b,c,d,e) values of the double exponential
+    
+    Returns:
+        img: the fake background image
+    """
+    # Flips and unpacks
+    a, b, c, d, e = back_vals
+    mask_center = (mask_center[1], mask_center[0])
+    diff_center = (diff_center[1], diff_center[0])
+    exp_img = fake_img.background(size, diff_center, a, b, c, d, e)
+    mask_img = fake_img.masking(size, mask_center, mask_rad)
+    return exp_img*mask_img
+
+def find_and_remove_background(mask_cen, mask_rad, diff_cen, img, thetas):
+    """Fit/subtract the background of an image and the thetas of its angles.
+    
+    Args:
+        mask_cen: the center of the masking region
+        mask_rad: the radius of the masking region
+        diff_cen: the center of the diffraction pattern
+        img: the image whose background we're interested in
+        thetas: the list of (at least one) angles we want to exclude 
+    
+    Returns:
+        img: img-background, to best of abilities
+    """
+    size = img.shape
+    back_x, back_y = background_collapse(diff_cen, img, thetas, plot=False)
+    fits = _fit_double_exp(back_y, back_x, plot=False)
+    fake_back_img = _fake_background(size, mask_cen, mask_rad, diff_cen, fits)
+    return img-fake_back_img
+
+
+## Use peaks to find info about image
+def find_diffraction_center(pairs, which_list='longest'):
+    """ Find the diffraction center based off of pairs of points.
+    By default, use the longest list of pairs.
+    Takes:
+        pairs: lists of point pairs, output of extract_pairs
+        which_list: "longest" or index location in pairs
+    Gives:
+        center: row,col center of the diffraction image
+    """
+    # Which pair list to use
+    if which_list == 'longest':
+        which_list = np.argmax(map(len, pairs))
+    # Find mean middle point
+    mid = lambda pair: np.add(np.subtract(pair[0], pair[1])/2.0, pair[1])
+    center = np.mean([mid(p) for p in pairs[which_list]], 0)
+    return center
+
+
+
 ## Test if run directly
 def main():
     import support
@@ -106,7 +172,7 @@ def main():
     unorg_peaks = peak_finder.peaks_from_image(data, block, plot=True)
     success, thetas, peaks = peak_finder.optimize_thetas(block[0], unorg_peaks)
     back, back_dists = background_collapse(block[0], data, thetas, True)
-    back_params = fit_double_exp(back, back_dists, True)
+    back_params = _fit_double_exp(back, back_dists, True)
 
 if __name__ == '__main__':
 	main()
