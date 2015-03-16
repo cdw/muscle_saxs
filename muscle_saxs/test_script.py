@@ -9,9 +9,12 @@ Created by Dave Williams on 2015-03-10
 import support
 import time
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 import peak_finder as peakf
 import blocked_region
+import fiber_lines
+import xray_backgroung as xbkg
 import support
 
 # Test of d10 locating
@@ -21,14 +24,16 @@ fns = filter(lambda s:s.endswith('.tif'), fns)
 plt.ion()
 
 
-fn = fns[10]
+fn = fns[15]
 img = support.image_as_numpy(img_dir+fn)
 center, radius = blocked_region.find_blocked_region(img, False)
 points = peakf.peaks_from_image(img, (center, radius), plot=False)
-success, thetas, clus_peaks = peakf.optimize_thetas(center,
-                              points, plot=False, pimg=img)
+success, thetas, clus_peaks = fiber_lines.optimize_thetas(center, points, plot=False, pimg=img)
+theta = thetas[np.argmax(clus_peaks)]
 pairs = peakf.extract_pairs(center, points, True, img)
-
+d10 = pairs[0]
+img_no_bkg = xbkg.find_and_remove_background(center, radius, center, img, [theta])
+rois = [peakf.img_roi(ploc, img_no_bkg, 8) for ploc in d10]
 
 
 
@@ -42,7 +47,7 @@ for fn in fns:
     block = blocked_region.find_blocked_region(img, 
                                        plot=False)
     max_points = peakf.peaks_from_image(img, block, plot=False)
-    success, thetas, clus_peaks = peakf.optimize_thetas(block[0],
+    success, thetas, clus_peaks = fiber_lines.optimize_thetas(block[0],
                                   max_points, plot=False, pimg=img)
     pairs = peakf.extract_pairs(block[0], max_points, True, img)
     time.sleep(0.2)
