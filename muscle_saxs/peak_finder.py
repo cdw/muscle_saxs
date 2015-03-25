@@ -206,7 +206,8 @@ def extract_highest(peaks, img, n_highest=2):
 ## Find peak properties
 def img_roi(peak, img, region=2):
     """Extract a ROI around a peak, extending region pixels in each dir"""
-    roi = img[peak[0]-region:peak[0]+region, peak[1]-region:peak[1]+region]
+    roi = img[peak[0]-region-1:peak[0]+region, 
+              peak[1]-region-1:peak[1]+region]
     return roi
 
 def peak_height(peak, img, region=2):
@@ -236,21 +237,21 @@ def fit_peak(peak, img, region=6, starting = None):
     # Snag roi, set up initial values
     roi = img_roi(peak, img, region)
     size = roi.shape
-    center = np.divide(size, 2) - 1
+    center = np.divide(size, 2)
     if starting is not None:
         # Unpack and use
         H_start, K_start, M_start = starting
     else:
         # Educated guesses
         H_start = np.max(roi)
-        K_start = 0.8
+        K_start = 0.2
         M_start = 0.4
     # Optimize peak parts
     opt_res = optimize.minimize(residual, (H_start, K_start, M_start),
                                 args = (roi, size, center), 
                                 jac = False,
-                                bounds = ((0, np.inf), (0, np.inf), 
-                                          (0, np.inf)))
+                                bounds = ((0, np.inf), (0, 10), 
+                                          (0, 10)))
     success = opt_res['success']
     H, K, M = opt_res['x'] 
     return H, K, M

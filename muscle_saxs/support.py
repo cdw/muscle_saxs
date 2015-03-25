@@ -61,7 +61,7 @@ def pearson(size, center, H, K, M):
     Where the distance is from the passed center.
     Takes:
         size - (row, col) size of the image to generate
-        center - the (row, col) center of the background image
+        center - the (row, col) center of the peak
         H - the height of the distribution (should be >0)
         K - controls the spread (should be >0)
         M - controls the rate of decay of the tails (should be >0)
