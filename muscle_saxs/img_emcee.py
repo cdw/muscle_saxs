@@ -8,6 +8,7 @@ Created by Dave Williams on 2015-02-02
 
 # System imports
 import emcee
+import numpy as np
 import matplotlib.pyplot as plt
 # Local imports
 import fake_img as fimg
@@ -27,28 +28,6 @@ def gather_guess(img):
     success, thetas, peaks = peakf.optimize_thetas(block_center, unorg_peaks,
                                                   plot=True, pimg=img)
     
-    
- p0 = np.array((
-        57,   # mask center row
-        251,  # mask center col
-        15,   # mask radius
-        57,   # diffraction center row
-        251,  # diffraction center col
-        14,   # background a
-        220,  # background b
-        0.11, # background c
-        3.15, # background d
-        0.36, # background e
-        85,   # d10 spacing
-        15,   # d10 angle
-        1054, # d10 height
-        0.3,  # d10 spread
-        2.3,  # d10 decay
-        169,  # d20 spacing
-        267,  # d20 height
-        4,    # d20 spread
-        0.3)) # d20 decay
-
 
 def img_prior():
     """Need one"""
@@ -61,6 +40,37 @@ def img_likelihood():
 def img_probability():
     """Need one"""
     return None
+
+def peak_probability(crcchkm, real_peak):
+    """Log prob that a generated peak comes from the data's distribution. 
+    
+    Args:
+        cxcyhkm (tuple): the parameters that define our model peak, in the
+            form of (center_row, center_col, H, K, M) where the latter 3 are
+            described under support.pearson
+        real_peak (array): the data we are comparing to
+    Returns:
+        ln_prob (float): the log(prob) that the data came from a distribution
+            centered on the model, treating each pixel as a Poisson process
+    """
+    ## Generate model image
+    cen_row, cen_col, H, K, M = crcchkm
+    size_row, size_col = real_peak.shape
+    model = support.pearson((size_row, size_col), (cen_row, cen_col), H, K, M)
+    ## Enforce limits
+    limits = (cen_row < 0,
+              cen_row > size_row, 
+              cen_col < 0, 
+              cen_col > size_col,
+              H <= 0, 
+              K <= 0, 
+              M <= 0)
+    if any(limits):
+        return -np.inf
+    ## Compare model to data
+    prob = fimg.pixel_difference_log_prob(model, real_peak)
+    ## Return sum
+    return np.sum(prob)
 
 
 ## Test if run directly
