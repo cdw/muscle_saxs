@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Muscle saxs by cdw</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Muscle saxs</h1>
+        <p>Background subtraction and peak recognition for x-ray diffraction images of muscle</p>
+
+        <p class="view"><a href="https://github.com/cdw/muscle_saxs">View the Project on GitHub <small>cdw/muscle_saxs</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/cdw/muscle_saxs/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/cdw/muscle_saxs/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/cdw/muscle_saxs">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a id="muscle_saxs" class="anchor" href="#muscle_saxs" aria-hidden="true"><span class="octicon octicon-link"></span></a>muscle_saxs</h1>
+
+<p>Background subtraction and peak recognition for x-ray diffraction images of muscle</p>
+
+<p><img src="docs/diffraction_lines.png" alt="Diffraction lines from a Manduca Sexta DLM flight muscle"></p>
+
+<h2>
+<a id="a-short-introduction-to-diffraction-peaks-and-their-related-structures" class="anchor" href="#a-short-introduction-to-diffraction-peaks-and-their-related-structures" aria-hidden="true"><span class="octicon octicon-link"></span></a>A short introduction to diffraction peaks and their related structures</h2>
+
+<p>X-ray diffraction produces many peaks, each corresponding to a particular length of repeating structure in a particular orientation. This is an attempt to offer a brief guide to x-ray diffraction parameters.</p>
+
+<p>X-ray peaks are frequently split into two general lines or areas, the equator and the meridian. The equator typically shows the strongest patterns and is the result of features which are orthogonal to the long axis of the thick and thin filaments (hereafter the radial direction). The meridian is perpendicular to the equator and has patterns which are the result of repeating structures along the long axis of the thick and thin filaments (hereafter the axial direction). Let's look at some specific diffraction peaks in each instance and talk about what gives rise to them:</p>
+
+<h3>
+<a id="equatorial-direction" class="anchor" href="#equatorial-direction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Equatorial direction</h3>
+
+<p>Equatorial diffraction lines arise from structures in the radial or transverse direction (that direction which is orthogonal to the long axes of the thick and thin filaments and the direction in which they slide past each other). This is the direction in which lattice spacing changes and in which myosin must diffuse in order to bind to actin and generate force. Some of the diffraction peaks are: </p>
+
+<ul>
+<li>1.0 diffraction line - from the spacing between two adjacent layers of thick filaments </li>
+<li>1.1 diffraction line - from the spacing between an actin layer and its adjacent myosin layer</li>
+<li>2.0 diffraction line - from the spacing between an actin layer and its adjacent myosin layer</li>
+</ul>
+
+<p>These are only rough guides, a more in depth discussion of these peaks and their corresponding structures can be found in Irving (2006) and Squire (1982) and will benefit from a refresher course on crystal structure.</p>
+
+<h3>
+<a id="meridional-direction" class="anchor" href="#meridional-direction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Meridional direction</h3>
+
+<p>Meridional diffraction lines arise from repeating structures aligned with the long axis of the thick and thin filaments. These lines are typically farther out from the center of the image and are frequently cropped off when examining the equatorial patterns, but provide information about strain and twisting along the thick and thin filaments. Some of the lines are:</p>
+
+<ul>
+<li>14.5nm - from the spacing between adjacent crowns of myosin (which emerges from the thick filament backbone in sets of two and three spaced around the long axis of the thick filament)</li>
+<li>7.25nm - a higher order multiple of the 14.5nm line</li>
+<li>5.9nm - from the actin helix when treated as a tightly-coiled single-start left-handed helix as opposed to as a double-start helix. This is the same as the difference between treating the f-actin chain as a more tightly coiled set of g-actin monomers versus as a more loosely coiled set of g-actin dimers. A</li>
+</ul>
+
+<h3>
+<a id="citations" class="anchor" href="#citations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Citations</h3>
+
+<p>TC Irving. <em>X-ray diffraction of indirect flight muscle from Drosophila in vivo.</em> in <em>Nature's Versatile Engine: Insect Flight Muscle Inside and Out.</em> JO Vigoreaux, editor. Landes Bioscience, Georgetown, TX (2006) pp. 197–213</p>
+
+<p>JM Squire. <em>The structural basis of muscular contraction.</em> Plenum Press (1982)</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/cdw">cdw</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-48259954-2");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
