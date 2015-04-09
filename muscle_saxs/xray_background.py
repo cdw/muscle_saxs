@@ -21,6 +21,9 @@ import fake_img
 def background_collapse(center, img, thetas, plot=False):
     """Collapse the image background, ignoring the peak regions.
     Good ideas to be had here: http://goo.gl/2xEApw
+    
+    TODO: Stop use of thetas, just take peaks and draw exclusion zones for each
+    
     Takes:
         center: x,y center of blocked image
         img: from which background is extracted

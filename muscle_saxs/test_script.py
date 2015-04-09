@@ -53,7 +53,16 @@ samplers = [emcee.EnsembleSampler(nwalkers, len(p0),
             for p0,roi in zip(initial_pos, rois)]
 burn_ins = [sampler.run_mcmc(p0, 100) for sampler, p0 in zip(samplers, p0s)]
 [sampler.reset() for sampler in samplers]
-#mcmc_runs = [sampler.run_mcmc(p0, 1000) for sampler, p0 in zip(samplers, p0s)]
+mcmc_runs = [sampler.run_mcmc(p0, 1000) for sampler, p0 in zip(samplers, p0s)]
+## Extract d10s
+"""Here the goal is to find the local peak locations, and credible intervals of
+those locations, in order to transform that information into a measurement of d10
+and our uncertainty in that measurement"""
+ndims = len(initial_pos[0])
+flats = [s.chain.reshape((-1, ndims)) for s in samplers]
+
+local_locations = []
+peak_to_peak = np.hypot(
 
 ## Plot one
 sampler = samplers[0]

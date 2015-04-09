@@ -12,8 +12,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 # Local imports
 import fake_img as fimg
-import xray_background as back
+import xray_background as xbkg
+import blocked_region
 import peak_finder as peakf
+import fiber_lines as flines
 import support 
 
 def gather_guess(img):
@@ -23,23 +25,23 @@ def gather_guess(img):
     Returns:
         p0: an array of parameters to jiggle for initial walker positions
     """
-    block_center, block_rad = back.find_blocked_region(img, plot=True)
-    unorg_peaks = peakf.peaks_from_image(img, plot=True)
-    success, thetas, peaks = peakf.optimize_thetas(block_center, unorg_peaks,
-                                                  plot=True, pimg=img)
-    
-
-def img_prior():
-    """Need one"""
-    return None
-
-def img_likelihood():
-    """Need one"""
-    return None
-
-def img_probability():
-    """Need one"""
-    return None
+    # Parameter settings, may need to jiggle/pass directly in future
+    roi_size = 8
+    peak_range = (4,12)
+    # Process peaks out of image
+    center, radius = blocked_region.find_blocked_region(img, plot=True)
+    unorg_peaks = peakf.peaks_from_image(img, (center, radius),
+                                         peak_range=peak_range, plot=False)
+    pairs = peakf.extract_pairs(center, unorg_peaks, plot=True, pimg=img)
+    d10 = pairs[0]
+    # Find diffraction lines and subtract background
+    success, thetas, clus_peaks = flines.optimize_thetas(center, unorg_peaks)
+    theta = thetas[np.argmax(clus_peaks)]
+    img_no_bkg = xbkg.find_and_remove_background(center, radius, center, 
+                                                 img, [theta])
+    rois = [peakf.img_roi(ploc, img_no_bkg, roi_size) for ploc in d10]
+    peak_fits = [peakf.fit_peak((roi_size, roi_size), r) for r in rois]
+    return zip(d10, peak_fits, rois)
 
 def peak_probability(crcchkm, real_peak):
     """Log prob that a generated peak comes from the data's distribution. 
