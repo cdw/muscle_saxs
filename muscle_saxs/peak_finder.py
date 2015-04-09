@@ -19,6 +19,7 @@ Created by Dave Williams on 2015-02-19
 
 # System imports
 import copy
+import warnings
 import cv2
 import numpy as np
 from scipy import ndimage, optimize
@@ -29,27 +30,33 @@ import support
 
 
 ## Build up the peak locations
-def peaks_from_image(img, block, smooth=1, mask_percent=80, plot = False):
+def peaks_from_image(img, block, smooth=1, mask_percent=80,
+                     peak_range=False, plot = False):
     """Return peak locations from an img.
     Takes:
         img: image to find peaks in
         block: ((center_col, center_row), center_rad) of the blocked region
         smooth: the (odd) number of pixels to smooth over
         mask_percent: the brightness cutoff for peak locations (%)
+        peak_range: (min, max) number of peaks to find, if passed then jiggle
+            the mask_percent until the requisite number of peaks are found
+            and return those, if unable to, return found peaks. This supersedes
+            the mask_percent if passed (False)
         plot: whether or not to plot the points, or axis to use
     Gives:
         peaks: peak locations matching 
     """
     # Smooth the image and find local maxima
     smoothed = ndimage.filters.gaussian_filter(img, smooth)
-    maxes = ndimage.filters.maximum_filter(smoothed, size=(3,3))==smoothed
+    all_maxes = ndimage.filters.maximum_filter(smoothed, size=(3,3))==smoothed
     # Mask image regions that we don't want peaks in
-    above_background = img>np.percentile(img, mask_percent)
+    # Central blocked region first
     blocked_region = np.ones_like(img, dtype=np.int8)
     (b_x, b_y), b_r = block
     extra_around_block = 10 # pix number to add to blocked radius
     cv2.circle(blocked_region, (int(round(b_x)), int(round(b_y))), 
                int(round(b_r+extra_around_block)), 0, -1)
+    # And around the edges
     edge_region = np.ones_like(img, dtype=np.int8)
     s_y, s_x = edge_region.shape
     edge_dist = 5 # pixels around edge to mask
@@ -57,21 +64,38 @@ def peaks_from_image(img, block, smooth=1, mask_percent=80, plot = False):
     cv2.rectangle(edge_region, (0,0), (edge_dist, s_y), 0, -1)
     cv2.rectangle(edge_region, (s_x,0), (s_x - edge_dist, s_y), 0, -1)
     cv2.rectangle(edge_region, (0,s_y), (s_x, s_y-edge_dist), 0, -1)
-    masked = above_background * blocked_region * edge_region
-    del(above_background, blocked_region, extra_around_block, 
-        edge_region, s_y, s_x, edge_dist)
+    def masked_area(percent):
+        """Give a masked image from a percent and some pre-blocked areas"""
+        above_background = img>np.percentile(img, percent)
+        masked = above_background * blocked_region * edge_region
+        return masked
     # Find the peaks that aren't masked
-    max_img = maxes * masked
-    maxes = max_img.nonzero()
+    def masked_peaks(percent):
+        """Return peaks in the masked region above cutoff percentage"""
+        masked = masked_area(percent)
+        max_img = all_maxes * masked
+        masked_max = max_img.nonzero()
+        return masked_max
+    maxes = masked_peaks(mask_percent)
+    if peak_range is not False:
+        peak_min, peak_max = peak_range
+        if len(maxes[0]) < peak_min:
+            while len(maxes[0]) < peak_min and mask_percent >= 1:
+                mask_percent -= 1
+                maxes = masked_peaks(mask_percent)
+        if len(maxes[0]) > peak_max:
+            while len(maxes[0]) > peak_max and mask_percent <= 99:
+                mask_percent += 1
+                maxes = masked_peaks(mask_percent)
     # Plot if desired
     if plot is not False:
         if plot is True:
             fig, ax = plt.subplots(figsize=[6,3])
         else:
             ax = plot
-        ax.imshow(masked)
+        ax.imshow(masked_area(mask_percent))
         ax.scatter(maxes[1], maxes[0], c='w', s=30)
-        ax.imshow(masked) # resets limits
+        ax.imshow(masked_area(mask_percent)) # resets limits
         ax.set_title("Peaks (white) in non-masked region (red)")
         plt.draw()
         plt.tight_layout()
