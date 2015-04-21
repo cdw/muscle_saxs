@@ -23,19 +23,28 @@ def gather_guess(img, show_plots=False):
     """From an image, gather the initial guesses to feed MCMC optimization.
     Takes:
         img: the image of interest
-        show_plots: whether to show intermediate plots
+        show_plots: whether to show intermediate plots or pass an axis to use
     Returns:
         p0: an array of parameters to jiggle for initial walker positions
     """
     # Parameter settings, may need to jiggle/pass directly in future
     roi_size = 8
     peak_range = (4,12)
+    # Allow plotting to sequential or individual axes
+    if show_plots is False:
+        plt1, plt2, plt3 = False, False, False
+    elif show_plots is True:
+        plt1, plt2, plt3 = True, True, True
+    elif not hasattr(show_plots, '__iter__'):
+        plt1, plt2, plt3 = show_plots, show_plots, show_plots # single axis
+    else:
+        plt1, plt2, plt3 = show_plots # list of axes
     # Process peaks out of image
-    center, radius = blocked_region.find_blocked_region(img, plot=show_plots)
+    center, radius = blocked_region.find_blocked_region(img, plot=False)
     unorg_peaks = peakf.peaks_from_image(img, (center, radius),
-                                         peak_range=peak_range, plot=show_plots)
-    pairs = peakf.extract_pairs(center, unorg_peaks, plot=show_plots, pimg=img)
-    d10 = pairs[0]
+                                         peak_range=peak_range, plot=plt1)
+    pairs = peakf.extract_pairs(center, unorg_peaks, plot=plt2, pimg=img)
+    d10 = peakf.extract_d10(pairs, horizontal=True, plot=plt3, pimg=img)
     # Find diffraction lines and subtract background
     success, thetas, clus_peaks = flines.optimize_thetas(center, unorg_peaks)
     theta = thetas[np.argmax(clus_peaks)]

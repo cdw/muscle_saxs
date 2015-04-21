@@ -188,15 +188,13 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
         return np.arctan2(pr[0]-pl[0], pr[1]-pl[1])
     dists = map(d_f, pairs)
     angles = map(a_f, pairs)
+    # Sort points by distance
+    sortind = np.argsort(dists)
     # Choose the horizontal line, or not as determined by passed options
-    hori = np.argmin(np.abs(angles))
+    hori = int(abs(angles[sortind[0]]) > abs(angles[sortind[1]]))
     if horizontal is False:
         hori = int(not hori)
-    # Sort points by distance
-    d_f = lambda p: np.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1])
-    dists = [d_f(p) for p in pairs[hori]]
-    sortind = np.argsort(dists)
-    d10 = pairs[hori][sortind[0]]
+    d10 = pairs[sortind[hori]]
     # Plot if option to plot passed
     if plot is not False:
         if plot is True:
