@@ -209,20 +209,19 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
         d10: points in pair line closest to center
     """
     # Find relevant pair info
-    d_f = lambda p: np.hypot(p[0][0]-p[0][1], p[1][0]-p[1][1])
-    def a_f(pair):
-        pl = pair[pair[0][0]>pair[0][1]]
-        pr = pair[pair[0][0]<pair[0][1]]
-        return np.arctan2(pr[0]-pl[0], pr[1]-pl[1])
-    dists = map(d_f, pairs)
-    angles = map(a_f, pairs)
-    # Sort points by distance
-    sortind = np.argsort(dists)
-    # Choose the horizontal line, or not as determined by passed options
-    hori = int(abs(angles[sortind[0]]) > abs(angles[sortind[1]]))
-    if horizontal is False:
-        hori = int(not hori)
-    d10 = pairs[sortind[hori]]
+    ll = lambda p: (p[p[0][1]>p[1][1]], p[p[0][1]<p[1][1]])
+    pairs = map(ll, pairs) # All pairs points go left to right
+    a_f = lambda p: np.arctan2(p[1][0]-p[0][0], p[1][1]-p[0][1]) # ang func
+    angles = np.array(map(a_f, pairs))
+    # Filter by horizontal or not, as desired
+    if horizontal == True:
+        pairs = [p for p,a in zip(pairs, angles) if a<np.radians(45)]
+    else:
+        pairs = [p for p,a in zip(pairs, angles) if a>np.radians(45)]
+    # Find distances, choose smallest
+    d_f = lambda p: np.hypot(p[0][0]-p[0][1], p[1][0]-p[1][1]) # dist func
+    dists = np.array(map(d_f, pairs))
+    d10 = pairs[np.argmin(dists)]
     # Plot if option to plot passed
     if plot is not False:
         if plot is True:
