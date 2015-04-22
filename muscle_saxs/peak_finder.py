@@ -106,33 +106,61 @@ def peaks_from_image(img, block, smooth=1, mask_percent=80,
 
 
 ## Sort peaks into pairs
-def extract_pairs(center, points, plot=False, pimg=None):
+def extract_pairs(block, points, plot=False, pimg=None):
     """Return sets of points representing pairs
     Takes:
-        center: the center of the diffraction pattern
+        block: ((center_col, center_row), center_rad) of the blocked region
+            We're really using this as an analog for the center of the
+            diffraction pattern. This is a possible target for improvement.
         points: the points, clustered by theta or not
         plot: True to plot, or axis to use
         pimg: image points taken from, for plotting
     """
-    dist_f = lambda p: np.hypot(p[1] - center[0], p[0] - center[1])
-    ang_f = lambda pl, pr: np.arctan2(pr[1]-pl[1], pr[0]-pl[0])
+    center, radius = block
+    xc, yc = center
+    dist_f = lambda (y, x): np.hypot(x - xc, y - yc)
+    #ang_f = lambda pl, pr: np.arctan2(pr[1]-pl[1], pr[0]-pl[0])
+    ang_f = lambda (ly,lx), (ry,rx): np.arctan2(ry-ly, rx-lx)
     def closest_point(pt, pts, tol=0.10):
         """Find closest pt in pts to pt with tolerance tol"""
+        # Test circle intersections
+        def intersect_test(pt1, pt2):
+            """Does the line pass within radius of the block center?"""
+            y1, x1 = pt1
+            y2, x2 = pt2
+            i, j = (x2-x1), (y2-y1)
+            s = i**2 + j**2
+            u = ((xc - x1)*i + (yc - y1)*j)/s
+            u = np.clip(u, 0, 1)
+            dist = np.sqrt((x1 + u*i - xc)**2 + (y1 + u*j - yc)**2)
+            return radius >= dist
+        #intersect_test = lambda (y1,x1),(y2,x2): radius >= (
+        #    np.abs((y2-y1)*xc - (x2-x1)*yc + x2*y1 - y2*x1)/
+        #    np.sqrt((y2-y1)**2 + (x2-x1)**2))
+        intersect_bool = [intersect_test(pt, p) for p in pts]
         # Find distances
         # Note that both dists and angles (below) are normalized
         dist = dist_f(pt)
         dists = [(dist_f(p)-dist)/dist for p in pts]
+        dist_bool = np.less(dists, 0.1) # no greater than 10% difference 
         # Find angles
-        rev_center = (center[1], center[0])
-        if pt[1] < center[0]: # vec in quads 1,4
-            pt_to_cent = ang_f(pt, rev_center)
-            angles = [(pt_to_cent - ang_f(rev_center, p))/np.pi for p in pts]
+        if pt[1] < xc: # vec in quads 1,4
+            pt_to_cent = ang_f((yc,xc), pt)
+            angles = [(pt_to_cent - ang_f((yc,xc), p))/np.pi for p in pts]
         else: # vec in quads 2,3
-            pt_to_cent = ang_f(rev_center, pt)
-            angles = [(pt_to_cent - ang_f(p, rev_center))/np.pi for p in pts]
+            pt_to_cent = ang_f(pt, (yc,xc))
+            angles = [(pt_to_cent - ang_f(p, (yc,xc)))/np.pi for p in pts]
+        angles = np.abs(angles)
+        angles = np.min((angles, np.abs(1-angles)), 0)
         # Find closest match in distance and angle
+        allowable = np.multiply(intersect_bool, dist_bool)
         ang_and_dist = np.abs(np.multiply(angles, dists))
-        match = np.argmin(ang_and_dist)
+        try: 
+            match = [i for i in np.argsort(ang_and_dist) if allowable[i]][0]
+        except IndexError:
+            msg = "Point "+str(pt)+" has no potential match"
+            warnings.warn(msg)
+            return None, pts
         # Check that match is within tolerance
         if dists[match] <= tol:
             pt2 = pts.pop(match)
