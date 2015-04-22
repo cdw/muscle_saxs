@@ -31,8 +31,7 @@ def find_blocked_region(img, plot=False):
     bar = img.mean() + 2 * img.std()  # bar to leap
     bin_img = (img<bar).astype(np.uint8)*255 # binary that image
     # Process the image into contours
-    cont, hier = cv2.findContours(bin_img, cv2.cv.CV_RETR_LIST,
-                                  cv2.cv.CV_CHAIN_APPROX_NONE)
+    cont, hier = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     hier = hier[0]
     # Blocked region is lowest contour, create a circle for it
     blocked_region = _lowest_contour_in_hierarchy(cont, hier)
