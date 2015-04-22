@@ -40,10 +40,11 @@ def gather_guess(img, show_plots=False):
     else:
         plt1, plt2, plt3 = show_plots # list of axes
     # Process peaks out of image
-    center, radius = blocked_region.find_blocked_region(img, plot=False)
-    unorg_peaks = peakf.peaks_from_image(img, (center, radius),
-                                         peak_range=peak_range, plot=plt1)
-    pairs = peakf.extract_pairs(center, unorg_peaks, plot=plt2, pimg=img)
+    block = blocked_region.find_blocked_region(img, plot=False)
+    center, radius = block
+    unorg_peaks = peakf.peaks_from_image(img, block, peak_range=peak_range, 
+                                         plot=plt1)
+    pairs = peakf.extract_pairs(block, unorg_peaks, plot=plt2, pimg=img)
     d10 = peakf.extract_d10(pairs, horizontal=True, plot=plt3, pimg=img)
     # Find diffraction lines and subtract background
     success, thetas, clus_peaks = flines.optimize_thetas(center, unorg_peaks)
