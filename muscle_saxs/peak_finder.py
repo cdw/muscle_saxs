@@ -121,11 +121,25 @@ def extract_pairs(block, points, plot=False, pimg=None):
     dist_f = lambda (y, x): np.hypot(x - xc, y - yc)
     #ang_f = lambda pl, pr: np.arctan2(pr[1]-pl[1], pr[0]-pl[0])
     ang_f = lambda (ly,lx), (ry,rx): np.arctan2(ry-ly, rx-lx)
-    def closest_point(pt, pts, tol=0.10):
-        """Find closest pt in pts to pt with tolerance tol"""
+    def closest_point(pt, pts, dtol = 0.1, atol=0.1):
+        """Find closest point within a tolerance.
+        Args:
+            pt (tuple): the row,col point of interest
+            pts (list): the potential matches
+            dtol (float): distance tolerance as percentage (0 to 1)
+            atol (float): the angular tol in radians
+        Returns:
+            pair (tuple): pair of points if match is found
+            points (list): pts minus the match if it was found
+        """
         # Test circle intersections
         def intersect_test(pt1, pt2):
-            """Does the line pass within radius of the block center?"""
+            """Does the line segment pass within radius of the block center?
+            This is more complicated than one might expect because it is
+            checking if the line *segment* passes within the radius of the
+            block center, not the infinite line defined by pt1 and pt2. 
+            See http://tinyurl.com/6ve7bjz for more info.
+            """
             y1, x1 = pt1
             y2, x2 = pt2
             i, j = (x2-x1), (y2-y1)
@@ -134,15 +148,12 @@ def extract_pairs(block, points, plot=False, pimg=None):
             u = np.clip(u, 0, 1)
             dist = np.sqrt((x1 + u*i - xc)**2 + (y1 + u*j - yc)**2)
             return radius >= dist
-        #intersect_test = lambda (y1,x1),(y2,x2): radius >= (
-        #    np.abs((y2-y1)*xc - (x2-x1)*yc + x2*y1 - y2*x1)/
-        #    np.sqrt((y2-y1)**2 + (x2-x1)**2))
-        intersect_bool = [intersect_test(pt, p) for p in pts]
+        intersect_bool = np.array([intersect_test(pt, p) for p in pts])
         # Find distances
         # Note that both dists and angles (below) are normalized
         dist = dist_f(pt)
         dists = [(dist_f(p)-dist)/dist for p in pts]
-        dist_bool = np.less(dists, 0.1) # no greater than 10% difference 
+        dist_bool = np.less(dists, dtol) # no greater than dtol% difference 
         # Find angles
         if pt[1] < xc: # vec in quads 1,4
             pt_to_cent = ang_f((yc,xc), pt)
@@ -152,23 +163,20 @@ def extract_pairs(block, points, plot=False, pimg=None):
             angles = [(pt_to_cent - ang_f(p, (yc,xc)))/np.pi for p in pts]
         angles = np.abs(angles)
         angles = np.min((angles, np.abs(1-angles)), 0)
+        angles_bool = np.less(angles, atol) # no greater than atol radians
         # Find closest match in distance and angle
-        allowable = np.multiply(intersect_bool, dist_bool)
+        allowable = intersect_bool * dist_bool * angles_bool
         ang_and_dist = np.abs(np.multiply(angles, dists))
         try: 
             match = [i for i in np.argsort(ang_and_dist) if allowable[i]][0]
+            import ipdb; ipdb.set_trace()
         except IndexError:
-            msg = "Point "+str(pt)+" has no potential match"
-            warnings.warn(msg)
+            msg = "Point "+str(pt)+" has no match"
+            #warnings.warn(msg) # seems unnecessary, restore if missed
             return None, pts
-        # Check that match is within tolerance
-        if dists[match] <= tol:
-            pt2 = pts.pop(match)
-            return (pt, pt2), pts
-        else:
-            msg = "Point "+str(pt)+" has no match within tolerance"
-            warnings.warn(msg)
-            return None, pts
+        # Remove matched point and return 
+        pt2 = pts.pop(match)
+        return (pt, pt2), pts
     # Apply to all points
     points = copy.deepcopy(points)
     points = [points[i] for i in np.argsort(map(dist_f, points))]
