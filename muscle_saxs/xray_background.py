@@ -24,11 +24,12 @@ def background_collapse(center, img, thetas, plot=False):
     
     TODO: Stop use of thetas, just take peaks and draw exclusion zones for each
     
-    Takes:
+    Args:
         center: x,y center of blocked image
         img: from which background is extracted
         thetas: angles of lines we wish to miss
-        plot: if we should plot the exclusion regions and profile
+        plot: if we should plot the exclusion regions and profile (True/False)
+              or a list of two axes to plot onto
     Gives:
         background: profile of background
         background_dists: pixel distances of background from center
@@ -60,8 +61,11 @@ def background_collapse(center, img, thetas, plot=False):
     background = radial_profile[highest_ind:]
     background_dists = np.arange(highest_ind,len(radial_profile))
     # Plot if passed
-    if plot is True:
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[6,6])
+    if plot is not False:
+        if plot is True:
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[6,6])
+        else:
+            ax1, ax2 = plot
         ax1.scatter(center[0], center[1], color='m')
         ax1.imshow(mask*img) 
         ax2.plot(background, linewidth=3)
@@ -76,7 +80,9 @@ def _fit_double_exp(trace_y, trace_x, plot=False):
     """Fit a double exponential function to the passed trace.
     Ignore the region to the left of the peak. 
     Takes:
-        trace: a nx1 data trace
+        trace_y: a nx1 data trace
+        trace_x: the x indices that go with trace_y
+        plot: whether or not to plot the fit
     Gives:
         vals: optimized parameters for a double exp
     """
@@ -90,8 +96,11 @@ def _fit_double_exp(trace_y, trace_x, plot=False):
     success = opt_res['success']
     vals = opt_res['x']
     # Plot if desired
-    if plot is True:
-        fig, ax = plt.subplots(figsize=[6,3])
+    if plot is not False:
+        if plot is True:
+            fig, ax = plt.subplots(figsize=[6,3])
+        else:
+            ax = plot
         plt.plot(trace_x, dexp(trace_x, *zip(vals)), 'c', linewidth=3)
         plt.plot(trace_x, trace_y, 'r', linewidth=3)
         ax.set_title("Real (r) and fitted (c) values")
@@ -124,7 +133,8 @@ def _fake_background(size, mask_center, mask_rad, diff_center, back_vals):
     mask_img = fake_img.masking(size, mask_center, mask_rad)
     return exp_img*mask_img
 
-def find_and_remove_background(mask_cen, mask_rad, diff_cen, img, thetas):
+def find_and_remove_background(mask_cen, mask_rad, diff_cen, img, thetas,
+                               plot=False):
     """Fit/subtract the background of an image and the thetas of its angles.
     
     Args:
@@ -133,13 +143,25 @@ def find_and_remove_background(mask_cen, mask_rad, diff_cen, img, thetas):
         diff_cen: the center of the diffraction pattern
         img: the image whose background we're interested in
         thetas: the list of (at least one) angles we want to exclude 
-    
+        plot: to plot the masks and fit or not (True/False) or a list of 
+              three axes to plot onto
+        
     Returns:
         img: img-background, to best of abilities
     """
+    # Plot set up
+    if plot is not False:
+        if plot is True:
+            fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=[6,9])
+            ax12 = (ax1, ax2)
+        else:
+            ax12 = plot[0], plot[1]
+            ax3 = plot[2]
+    else:
+        ax12, ax3 = False, False
     size = img.shape
-    back_x, back_y = background_collapse(diff_cen, img, thetas, plot=False)
-    fits = _fit_double_exp(back_y, back_x, plot=False)
+    back_x, back_y = background_collapse(diff_cen, img, thetas, plot=ax12)
+    fits = _fit_double_exp(back_y, back_x, plot=ax3)
     fake_back_img = _fake_background(size, mask_cen, mask_rad, diff_cen, fits)
     return img-fake_back_img
 
