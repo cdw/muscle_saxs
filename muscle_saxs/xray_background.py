@@ -18,26 +18,28 @@ import fake_img
 
 ## Find the background profile and fit it
 
-def background_collapse(center, img, thetas, plot=False):
+def background_collapse(center, img, peaks, plot=False):
     """Collapse the image background, ignoring the peak regions.
     Good ideas to be had here: http://goo.gl/2xEApw
-    
-    TODO: Stop use of thetas, just take peaks and draw exclusion zones for each
     
     Args:
         center: x,y center of blocked image
         img: from which background is extracted
-        thetas: angles of lines we wish to miss
+        peaks: row,col locations of peaks; don't want these in the background
         plot: if we should plot the exclusion regions and profile (True/False)
               or a list of two axes to plot onto
     Gives:
         background: profile of background
         background_dists: pixel distances of background from center
     """
+    #import ipdb; ipdb.set_trace()
+    ## Find peak angles
+    cx, cy = center
+    #m_thetas = [support.pt_to_pt_angle((cy, cx), pt) for pt in peaks]
+    m_thetas = [np.arctan2(pt[0] - cy, pt[1] - cx) for pt in peaks]
     ## With shifting, find the masking region
     mask = np.ones((img.shape[0], img.shape[1]*2), dtype=np.float)
     m_center = (int(round(center[0] + img.shape[1])), int(round(center[1])))
-    m_thetas = np.concatenate(([t+np.pi for t in thetas], thetas))
     m_thetas = np.round(np.degrees(m_thetas)).astype(np.int)
     theta_pm = 12 # amount to block on either side
     m_angles = [(t-theta_pm, t+theta_pm) for t in m_thetas] # angles to block
@@ -68,6 +70,11 @@ def background_collapse(center, img, thetas, plot=False):
             ax1, ax2 = plot
         ax1.scatter(center[0], center[1], color='m')
         ax1.imshow(mask*img) 
+        colors = list(np.tile(
+            ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w', '.25', '.5', '.75'], 5))
+        for peak in peaks:
+            c = colors.pop(0)
+            ax1.scatter(peak[1], peak[0], c=c, s=40)
         ax2.plot(background, linewidth=3)
         ax1.set_title("Masked image for profiling")
         ax2.set_title("Resulting radial profile")
@@ -133,16 +140,16 @@ def _fake_background(size, mask_center, mask_rad, diff_center, back_vals):
     mask_img = fake_img.masking(size, mask_center, mask_rad)
     return exp_img*mask_img
 
-def find_and_remove_background(mask_cen, mask_rad, diff_cen, img, thetas,
+def find_and_remove_background(mask_cen, mask_rad, diff_cen, img, peaks,
                                plot=False):
-    """Fit/subtract the background of an image and the thetas of its angles.
+    """Fit/subtract the background of an image and the peaks of its angles.
     
     Args:
         mask_cen: the center of the masking region
         mask_rad: the radius of the masking region
         diff_cen: the center of the diffraction pattern
         img: the image whose background we're interested in
-        thetas: the list of (at least one) angles we want to exclude 
+        peaks: the peaks we want to exclude (at least one)
         plot: to plot the masks and fit or not (True/False) or a list of 
               three axes to plot onto
         
@@ -160,7 +167,7 @@ def find_and_remove_background(mask_cen, mask_rad, diff_cen, img, thetas,
     else:
         ax12, ax3 = False, False
     size = img.shape
-    back_x, back_y = background_collapse(diff_cen, img, thetas, plot=ax12)
+    back_x, back_y = background_collapse(diff_cen, img, peaks, plot=ax12)
     fits = _fit_double_exp(back_y, back_x, plot=ax3)
     fake_back_img = _fake_background(size, mask_cen, mask_rad, diff_cen, fits)
     return img-fake_back_img

@@ -53,6 +53,19 @@ def evaluate_to_img(func, size):
     eval = func(x_ind[:, None], y_ind[None, :])
     return eval
 
+
+## Geometry
+def pt_to_pt_angle(pt1, pt2):
+    """What the angle made by the pt to pt vector via arctan2. Pts are y,x."""
+    y1, x1 = pt1
+    y2, x2 = pt2
+    # Find angles
+    if x1 < x2:
+        return np.arctan2(y2-y1, x2-x1)
+    else:
+        return np.arctan2(y1-y2, x1-x2)
+
+
 ## Probabilistic distributions
 def pearson(size, center, H, K, M):
     """Return an image with a symmetrical Pearson VII distribution.

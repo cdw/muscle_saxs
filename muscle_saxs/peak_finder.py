@@ -104,7 +104,6 @@ def peaks_from_image(img, block, smooth=1, mask_percent=80,
     return zipped_maxes
 
 
-
 ## Sort peaks into pairs
 def extract_pairs(block, points, plot=False, pimg=None):
     """Return sets of points representing pairs
@@ -169,7 +168,6 @@ def extract_pairs(block, points, plot=False, pimg=None):
         ang_and_dist = np.abs(np.multiply(angles, dists))
         try: 
             match = [i for i in np.argsort(ang_and_dist) if allowable[i]][0]
-            import ipdb; ipdb.set_trace()
         except IndexError:
             msg = "Point "+str(pt)+" has no match"
             #warnings.warn(msg) # seems unnecessary, restore if missed
@@ -312,6 +310,7 @@ def fit_peak(peak, img, region=6, starting = None):
     success = opt_res['success']
     H, K, M = opt_res['x'] 
     return H, K, M
+
 
 ## Test if run directly
 def main():

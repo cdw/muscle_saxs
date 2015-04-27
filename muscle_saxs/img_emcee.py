@@ -47,10 +47,8 @@ def gather_guess(img, show_plots=False):
     pairs = peakf.extract_pairs(block, unorg_peaks, plot=plt2, pimg=img)
     d10 = peakf.extract_d10(pairs, horizontal=True, plot=plt3, pimg=img)
     # Find diffraction lines and subtract background
-    success, thetas, clus_peaks = flines.optimize_thetas(center, unorg_peaks)
-    theta = thetas[np.argmax(clus_peaks)]
     img_no_bkg = xbkg.find_and_remove_background(center, radius, center, 
-                                                 img, [theta])
+                                                 img, unorg_peaks)
     rois = [peakf.img_roi(ploc, img_no_bkg, roi_size) for ploc in d10]
     peak_fits = [peakf.fit_peak((roi_size, roi_size), r) for r in rois]
     return zip(d10, peak_fits, rois)
