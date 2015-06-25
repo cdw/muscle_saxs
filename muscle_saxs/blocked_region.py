@@ -20,18 +20,28 @@ def find_blocked_region(img, plot=False):
     Given an image, find the center region where the blocker is, defined as
     the inner-most (and roundest) area with pixel values less than two
     standard deviations from the mean pixel value.
-    Takes: 
-        img - numpy array of grey values
-        plot - whether to plot outcome, or axis to plot to (false by default)
-    Gives:
-        center - (x,y) value locations of the center of the blocked region
-        radius - the radius of the blocked region
+    
+    Parameters
+    ----------
+    img : numpy.array 
+        greyscale diffraction image
+    plot : boolean, optional
+        whether to plot outcome, or axis to plot to (false by default)
+    
+    Returns
+    -------
+    center : tuple 
+        (x,y) value locations of the center of the blocked region
+    radius :
+        the radius of the blocked region
     """
     # Segment the image
     bar = img.mean() + 2 * img.std()  # bar to leap
-    bin_img = (img<bar).astype(np.uint8)*255 # binary that image
+    bin_img = (img<bar).astype(np.uint8)*255  # binary that image
     # Process the image into contours
     cont, hier = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    if hier is None:
+        raise Exception, "No contours found"
     hier = hier[0]
     # Blocked region is lowest contour, create a circle for it
     blocked_region = _lowest_contour_in_hierarchy(cont, hier)
@@ -53,12 +63,24 @@ def find_blocked_region(img, plot=False):
 
 def _lowest_contour_in_hierarchy(contours, hierarchy):
     """Return the lowest, most junior, node(s) in a contour set.
-    Contour sets consist of a series of entries such as [a, b, c, d] where:
-        a is index of the next contour on the same level
-        b is index of the prior contour on the same level
-        c is the first child of this contour
-        d is the parent of this contour
-    and a value of -1 means none-such exists.
+    
+    Parameters
+    ----------
+    contour : list
+        A list of contours found in an image. 
+    hierarchy : list
+        A contour hierarchy consists of a series of entries such 
+        as [a, b, c, d] where:
+            a is index of the next contour on the same level
+            b is index of the prior contour on the same level
+            c is the first child of this contour
+            d is the parent of this contour
+        and a value of -1 means none-such parent/child/sibling exists.
+    
+    Returns
+    -------
+    contour : list
+       The innermost contour in a set.
     """
     level_list = _node_levels([[]], hierarchy, 0, 0) # walk tree to find levels
     lowest = level_list[-1]
