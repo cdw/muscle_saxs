@@ -65,6 +65,23 @@ def pt_to_pt_angle(pt1, pt2):
     else:
         return np.arctan2(y1-y2, x1-x2)
 
+def center_to_center_dist(peak_locs, center_locs, rois):
+    """From MCMC output, find the distance peak-to-peak distance
+    
+    Args:
+        peak_locs: ((l_row,l_col),(r_row,r_col)) inside roi
+        center_locs: ((l_row,l_col),(r_row,r_col)) of roi center
+        rois: (lroi, rroi) the rois
+    Returns:
+        distance: the distance from peak to peak
+    """
+    half_rois = [[d/2 for d in r.shape] for r in rois]
+    to_center = lambda p, c, hr: (c[0]-hr[0]+p[0], c[1]-hr[1]+p[1])
+    left = to_center(peak_locs[0], center_locs[0], half_rois[0])
+    right = to_center(peak_locs[1], center_locs[1], half_rois[1])
+    dist = np.hypot(*np.subtract(right, left))
+    return dist
+
 
 ## Probabilistic distributions
 def pearson(size, center, H, K, M):
