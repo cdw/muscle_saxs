@@ -16,7 +16,6 @@ import fake_img as fimg
 import xray_background as xbkg
 import blocked_region
 import peak_finder as peakf
-import fiber_lines as flines
 import support 
 
 def gather_guess(img, show_plots=False):
