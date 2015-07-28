@@ -33,18 +33,29 @@ import support
 def peaks_from_image(img, block, smooth=1, mask_percent=80,
                      peak_range=False, plot = False):
     """Return peak locations from an img.
-    Takes:
-        img: image to find peaks in
-        block: ((center_col, center_row), center_rad) of the blocked region
-        smooth: the (odd) number of pixels to smooth over
-        mask_percent: the brightness cutoff for peak locations (%)
-        peak_range: (min, max) number of peaks to find, if passed then jiggle
-            the mask_percent until the requisite number of peaks are found
-            and return those, if unable to, return found peaks. This supersedes
-            the mask_percent if passed (False)
-        plot: whether or not to plot the points, or axis to use
-    Gives:
-        peaks: peak locations matching 
+    
+    Parameters
+    ----------
+    img : np.array
+        image to find peaks in
+    block : tuple
+        ((center_col, center_row), center_rad) of the blocked region
+    smooth : int, optional
+        the (odd) number of pixels to smooth over, default is 1
+    mask_percent : int, optional
+        the brightness cutoff for peak locations in percent
+    peak_range : tuple, optional
+        (min, max) number of peaks to find, if passed then jiggle the
+        mask_percent until the requisite number of peaks are found and
+        return those, if unable to, return found peaks. This supersedes
+        the mask_percent if passed, default is false
+    plot : boolean or matplotlib.axis, optional
+        whether or not to plot the points, or axis to use, default is
+        false
+    
+    Returns
+    -------
+    peaks: peak locations matching 
     """
     # Smooth the image and find local maxima
     smoothed = ndimage.filters.gaussian_filter(img, smooth)
@@ -107,29 +118,45 @@ def peaks_from_image(img, block, smooth=1, mask_percent=80,
 ## Sort peaks into pairs
 def extract_pairs(block, points, plot=False, pimg=None):
     """Return sets of points representing pairs
-    Takes:
-        block: ((center_col, center_row), center_rad) of the blocked region
-            We're really using this as an analog for the center of the
-            diffraction pattern. This is a possible target for improvement.
-        points: the points, clustered by theta or not
-        plot: True to plot, or axis to use
-        pimg: image points taken from, for plotting
+    
+    Parameters
+    ----------
+    block : tuple
+        ((center_col, center_row), center_rad) of the blocked region
+        We're really using this as an analog for the center of the
+        diffraction pattern. This is a possible target for improvement.
+    points : list 
+        the points, clustered by theta or not
+    plot : boolean or matplotlib.axis, optional
+        whether or not to plot the points, or axis to use, default is
+        false
+    pimg : np.array
+        image points taken from, for plotting
     """
     center, radius = block
     xc, yc = center
     dist_f = lambda (y, x): np.hypot(x - xc, y - yc)
-    #ang_f = lambda pl, pr: np.arctan2(pr[1]-pl[1], pr[0]-pl[0])
     ang_f = lambda (ly,lx), (ry,rx): np.arctan2(ry-ly, rx-lx)
     def closest_point(pt, pts, dtol = 0.1, atol=0.1):
         """Find closest point within a tolerance.
-        Args:
-            pt (tuple): the row,col point of interest
-            pts (list): the potential matches
-            dtol (float): distance tolerance as percentage (0 to 1)
-            atol (float): the angular tol in radians
-        Returns:
-            pair (tuple): pair of points if match is found
-            points (list): pts minus the match if it was found
+        
+        Parameters
+        ----------
+        pt : tuple
+            the row,col point of interest
+        pts : list
+            the potential matches
+        dtol : float
+            distance tolerance as percentage (0 to 1)
+        atol : float
+            the angular tol in radians
+        
+        Returns
+        -------
+        pair :  tuple
+            pair of points if match is found
+        points : list
+            pts minus the match if it was found
         """
         # Test circle intersections
         def intersect_test(pt1, pt2):
@@ -206,13 +233,22 @@ def extract_pairs(block, points, plot=False, pimg=None):
 
 def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
     """Return the two points representing the most likely d10 pair
-    Takes:
-        pairs: pairs of points clustered by theta angle and center distance
-        horizontal: True if d10 line is closer to horizontal
-        plot: plot if true, or axis to use
-        pimg: img to superimpose plot on if passed
-    Returns:
-        d10: points in pair line closest to center
+    
+    Parameters
+    ----------
+    pairs : list
+        pairs of points clustered by theta angle and center distance
+    horizontal : boolean
+        True if d10 line is closer to horizontal
+    plot : boolean or matplotlib.axes
+        plot if true, or axis to use
+    pimg : np.array
+        img to superimpose plot on if passed
+   
+    Returns
+    -------
+    d10: tuple
+        points in pair line closest to center
     """
     # Find relevant pair info
     ll = lambda p: (p[p[0][1]>p[1][1]], p[p[0][1]<p[1][1]])
@@ -248,12 +284,20 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
 
 def extract_highest(peaks, img, n_highest=2):
     """Extract the n highest peaks.
-    Takes:
-        peaks: list of row,col peak locations
-        img: img which peaks are drawn from
-        n_highest: number of peaks to extract (2)
-    Gives:
-        highest: the n highest peaks
+    
+    Parameters
+    ----------
+    peaks : list
+        list of row,col peak locations
+    img : np.array
+        img which peaks are drawn from
+    n_highest : int
+        number of peaks to extract (2)
+    
+    Returns
+    -------
+    highest : list
+        the n highest peaks
     """
     heights = [peak_height(p, img) for p in peaks]
     ordered = np.argsort(heights)
@@ -276,15 +320,26 @@ def peak_height(peak, img, region=2):
 
 def fit_peak(peak, img, region=6, starting = None):
     """Fit a peak and surrounding area to a Pearson VII distribution
-    Takes:
-        peak: row,col location of peak in img
-        img: peak img
-        region: area to fit over, default (6) gives 12x12 roi
-        starting: optionally preload starting conditions
-    Gives:
-        H: the height of the distribution (should be >0)
-        K: controls the spread (should be >0)
-        M: controls the rate of decay of the tails (should be >0)
+    
+    Parameters
+    ----------
+    peak : tuple
+        row,col location of peak in img
+    img : np.array
+        peak img
+    region : int
+        area to fit over, default (6) gives 12x12 roi
+    starting : tuple
+        optionally preloaded starting conditions
+    
+    Returns
+    -------
+    H : float
+        the height of the distribution (should be >0)
+    K : float
+        controls the spread (should be >0)
+    M : float
+        controls the rate of decay of the tails (should be >0)
     """
     # Residual for optimization
     def residual(hkm, roi, size, center):
