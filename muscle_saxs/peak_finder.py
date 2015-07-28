@@ -243,7 +243,10 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
     plot : boolean or matplotlib.axes
         plot if true, or axis to use
     pimg : np.array
-        img to superimpose plot on if passed
+        img to use for brightness detection (will select pair pair that is
+        both close and horizontal/not horizontal and bright if passed, just
+        the first two if not passed). Also used to superimpose plot on if
+        plotting is selected.
    
     Returns
     -------
@@ -260,13 +263,20 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
         pairs = [p for p,a in zip(pairs, angles) if a<np.radians(45)]
     else:
         pairs = [p for p,a in zip(pairs, angles) if a>np.radians(45)]
-    # Find distances, choose smallest
-    d_f = lambda p: np.hypot(p[0][0]-p[1][0], p[0][1]-p[1][1]) # dist func
-    dists = np.array(map(d_f, pairs))
-    if len(dists) == 0:
+    if len(pairs) == 0:
         # no d10 found
         return np.NaN
-    d10 = pairs[np.argmin(dists)]
+    # Find distances, choose smallest plus those close to smallest
+    d_f = lambda p: np.hypot(p[0][0]-p[1][0], p[0][1]-p[1][1]) # dist func
+    dists = np.array(map(d_f, pairs))
+    pairs = [p for p, d in zip(pairs, dists) if d<(1.5*dists.min())]
+    # Choose brightest of remaining pairs if pimg was passed, else closest
+    if pimg is None: 
+        d10 = pairs[np.argmin(dists)] # using the closest pair
+    else:
+        bright_f = lambda p: pimg[p[0]] + pimg[p[1]]
+        brightness = [bright_f(p) for p in pairs]
+        d10 = pairs[np.argmax(brightness)] # using the brightest pair
     # Plot if option to plot passed
     if plot is not False:
         if plot is True:
