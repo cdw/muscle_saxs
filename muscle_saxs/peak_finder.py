@@ -261,7 +261,7 @@ def extract_d10(pairs, horizontal = True, plot = False, pimg = None):
     else:
         pairs = [p for p,a in zip(pairs, angles) if a>np.radians(45)]
     # Find distances, choose smallest
-    d_f = lambda p: np.hypot(p[0][0]-p[0][1], p[1][0]-p[1][1]) # dist func
+    d_f = lambda p: np.hypot(p[0][0]-p[1][0], p[0][1]-p[1][1]) # dist func
     dists = np.array(map(d_f, pairs))
     if len(dists) == 0:
         # no d10 found
