@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 
 ## Contour processing
-def find_blocked_region(img, plot=False):
+def find_blocked_region(img, plot=False, min_size=5):
     """Locate the centrally blocked region of the image.
     Given an image, find the center region where the blocker is, defined as
     the inner-most (and roundest) area with pixel values less than two
@@ -27,6 +27,8 @@ def find_blocked_region(img, plot=False):
         greyscale diffraction image
     plot : boolean, optional
         whether to plot outcome, or axis to plot to (false by default)
+    min_size : int, optional
+        don't accept a blocked region below this size in pixels (5 by default)
     
     Returns
     -------
@@ -38,6 +40,7 @@ def find_blocked_region(img, plot=False):
     # Segment the image
     bar = img.mean() + 2 * img.std()  # bar to leap
     bin_img = (img<bar).astype(np.uint8)*255  # binary that image
+    bin_img = cv2.morphologyEx(bin_img, cv2.MORPH_OPEN, np.ones(min_size))
     # Process the image into contours
     cont, hier = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     if hier is None:
