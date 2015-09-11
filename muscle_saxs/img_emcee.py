@@ -20,11 +20,13 @@ import support
 
 def gather_guess(img, show_plots=False):
     """From an image, gather the initial guesses to feed MCMC optimization.
-    Takes:
-        img: the image of interest
-        show_plots: whether to show intermediate plots or pass an axis to use
+    
+    Args:
+        img (np array): the image of interest
+        show_plots (boolean): whether to show intermediate plots or pass 
+            an axis to use
     Returns:
-        p0: an array of parameters to jiggle for initial walker positions
+        p0 (tuple): array of parameters to jiggle for initial walker positions
     """
     # Parameter settings, may need to jiggle/pass directly in future
     roi_size = 8

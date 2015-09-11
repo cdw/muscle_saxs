@@ -165,7 +165,7 @@ def find_and_remove_background(mask_cen, mask_rad, diff_cen, img, peaks,
             ax12 = plot[0], plot[1]
             ax3 = plot[2]
     else:
-        ax12, ax3 = False, False
+       ax12, ax3 = False, False
     size = img.shape
     back_x, back_y = background_collapse(diff_cen, img, peaks, plot=ax12)
     fits = _fit_double_exp(back_y, back_x, plot=ax3)
